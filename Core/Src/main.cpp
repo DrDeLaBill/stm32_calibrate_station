@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
 #include "i2c.h"
 #include "rtc.h"
 #include "usart.h"
@@ -30,6 +31,9 @@
 #include "bmacro.h"
 #include "at24cm01.h"
 
+#include "gprotocol.h"
+
+#include "Timer.h"
 #include "StorageAT.h"
 #include "SoulGuard.h"
 #include "StorageDriver.h"
@@ -73,11 +77,16 @@ SoulGuard<
 	RTCWatchdog
 > soulGuard;
 
+unsigned gprotocol_counter = 0;
+uint8_t gprotocol_buf[sizeof(pack_t)] = {};
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
+
+void system_error_handler();
 
 /* USER CODE END PFP */
 
@@ -117,6 +126,8 @@ int main(void)
   MX_I2C1_Init();
   MX_USART2_UART_Init();
   MX_RTC_Init();
+  MX_ADC1_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
 	set_status(WAIT_LOAD);
@@ -132,7 +143,8 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 
 	while (is_status(WAIT_LOAD)) soulGuard.defend();
-	set_status(NEED_UPDATE_MODBUS_REGS);
+
+    HAL_UART_Receive_IT(&RS232_UART, (uint8_t*)&gprotocol_buf[gprotocol_counter++], 1);
 
 	printTagLog(MAIN_TAG, "The device is loaded successfully");
 
@@ -198,6 +210,31 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+	static gprotocol protocol;
+	static unsigned counter = 0;
+
+    if (huart->Instance == RS232_UART.Instance) {
+        HAL_UART_Receive_IT(&RS232_UART, (uint8_t*)&gprotocol_buf[gprotocol_counter++], 1);
+        if (counter == sizeof(pack_t)) {
+        	protocol.slave_recieve(reinterpret_cast<pack_t*>(gprotocol_buf));
+        	counter = 0;
+        }
+    } else {
+    	Error_Handler();
+    }
+}
+
+
+void system_error_handler()
+{
+	utl::Timer timer(30000);
+	timer.start();
+	while (timer.wait());
+	NVIC_SystemReset();
+}
+
 int _write(int, uint8_t *ptr, int len) {
 	(void)ptr;
 	(void)len;
@@ -221,12 +258,8 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
     b_assert(__FILE__, __LINE__, "The error handler has been called");
-	set_error(INTERNAL_ERROR);
-#ifdef DEBUG
-	while (1);
-#else
-	NVIC_SystemReset();
-#endif
+	set_error(ERROR_HANDLER_CALLED);
+	system_error_handler();
   /* USER CODE END Error_Handler_Debug */
 }
 
@@ -242,12 +275,8 @@ void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
 	b_assert((char*)file, line, "Wrong parameters value");
-	set_error(INTERNAL_ERROR);
-#ifdef DEBUG
-	while (1);
-#else
-	NVIC_SystemReset();
-#endif
+	set_error(ASSERT_ERROR);
+	system_error_handler();
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

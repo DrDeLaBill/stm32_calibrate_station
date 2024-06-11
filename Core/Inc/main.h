@@ -86,6 +86,10 @@ extern I2C_HandleTypeDef         hi2c1;
 extern UART_HandleTypeDef        huart2;
 #define BEDUG_UART               (huart2)
 
+// BEDUG UART
+extern UART_HandleTypeDef        huart1;
+#define RS232_UART               (huart1)
+
 // Watchdog
 //extern IWDG_HandleTypeDef        hiwdg; // TODO
 //#define DEVICE_IWDG              (hiwdg)
