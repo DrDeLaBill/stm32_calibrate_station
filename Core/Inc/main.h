@@ -90,6 +90,10 @@ extern UART_HandleTypeDef        huart2;
 extern UART_HandleTypeDef        huart1;
 #define RS232_UART               (huart1)
 
+// PUMP
+extern TIM_HandleTypeDef         htim3;
+#define MD212_TIM                (htim3)
+
 // Watchdog
 //extern IWDG_HandleTypeDef        hiwdg; // TODO
 //#define DEVICE_IWDG              (hiwdg)

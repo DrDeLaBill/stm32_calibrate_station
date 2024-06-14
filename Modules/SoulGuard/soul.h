@@ -47,6 +47,7 @@ typedef enum _SOUK_STATUS {
 	ASSERT_ERROR,
 	ERROR_HANDLER_CALLED,
 	INTERNAL_ERROR,
+	PUMP_ERROR,
 
 	/* Device errors end */
 	ERRORS_END,

@@ -21,11 +21,13 @@
 #include "adc.h"
 #include "i2c.h"
 #include "rtc.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "app.h"
 #include "soul.h"
 #include "level.h"
 #include "bmacro.h"
@@ -41,7 +43,6 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -77,6 +78,19 @@ SoulGuard<
 	RTCWatchdog
 > soulGuard;
 
+
+std::unordered_map<uint32_t, gtuple> table = {
+	{GP_KEY_STR("dv_type"),   {reinterpret_cast<uint8_t*>(&settings.dv_type),   sizeof(settings.dv_type)}},
+	{GP_KEY_STR("sw_id"),     {reinterpret_cast<uint8_t*>(&settings.sw_id),     sizeof(settings.sw_id)}},
+	{GP_KEY_STR("fw_id"),     {reinterpret_cast<uint8_t*>(&settings.fw_id),     sizeof(settings.fw_id)}},
+	{GP_KEY_STR("start"),     {reinterpret_cast<uint8_t*>(&app_info.start),     sizeof(app_info.start)}},
+	{GP_KEY_STR("target_ml"), {reinterpret_cast<uint8_t*>(&app_info.target_ml), sizeof(app_info.target_ml)}},
+	{GP_KEY_STR("level"),     {reinterpret_cast<uint8_t*>(&app_info.level),     sizeof(app_info.level)}},
+	{GP_KEY_STR("result_ml"), {reinterpret_cast<uint8_t*>(&app_info.result_ml), sizeof(app_info.result_ml)}}
+};
+gprotocol protocol(table);
+utl::Timer pTimer(100);
+bool pHasPacket = false;
 unsigned gprotocol_counter = 0;
 uint8_t gprotocol_buf[sizeof(pack_t)] = {};
 
@@ -86,6 +100,7 @@ uint8_t gprotocol_buf[sizeof(pack_t)] = {};
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 
+void update_app_info();
 void system_error_handler();
 
 /* USER CODE END PFP */
@@ -128,6 +143,7 @@ int main(void)
   MX_RTC_Init();
   MX_ADC1_Init();
   MX_USART1_UART_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
 
 	set_status(WAIT_LOAD);
@@ -144,21 +160,32 @@ int main(void)
 
 	while (is_status(WAIT_LOAD)) soulGuard.defend();
 
+	app_init();
+
     HAL_UART_Receive_IT(&RS232_UART, (uint8_t*)&gprotocol_buf[gprotocol_counter++], 1);
 
 	printTagLog(MAIN_TAG, "The device is loaded successfully");
 
+	pTimer.start();
 	while (1)
 	{
 		soulGuard.defend();
+
+		app_proccess();
 
 		if (has_errors()) {
 			continue;
 		}
 
-	/* USER CODE END WHILE */
+    /* USER CODE END WHILE */
+
+    /* USER CODE BEGIN 3 */
 		level_tick();
-	/* USER CODE BEGIN 3 */
+
+		if (pHasPacket) {
+			protocol.slave_recieve(reinterpret_cast<pack_t*>(gprotocol_buf));
+			pHasPacket = false;
+		}
 	}
   /* USER CODE END 3 */
 }
@@ -180,8 +207,9 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 4;
@@ -210,19 +238,29 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
+void update_app_info()
+{
+
+}
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	static gprotocol protocol;
-	static unsigned counter = 0;
-
     if (huart->Instance == RS232_UART.Instance) {
-        HAL_UART_Receive_IT(&RS232_UART, (uint8_t*)&gprotocol_buf[gprotocol_counter++], 1);
-        if (counter == sizeof(pack_t)) {
-        	protocol.slave_recieve(reinterpret_cast<pack_t*>(gprotocol_buf));
-        	counter = 0;
+		if (!pTimer.wait()) {
+			gprotocol_counter = 0;
+			pHasPacket = false;
+			pTimer.start();
+		} else {
+			gprotocol_counter++;
+		}
+        if (gprotocol_counter >= sizeof(pack_t)) {
+        	pHasPacket = true;
+        	gprotocol_counter = 0;
         }
+        pTimer.start();
+        HAL_UART_Receive_IT(&RS232_UART, (uint8_t*)&gprotocol_buf[gprotocol_counter], 1);
     } else {
-    	Error_Handler();
+    	system_error_handler();
     }
 }
 
