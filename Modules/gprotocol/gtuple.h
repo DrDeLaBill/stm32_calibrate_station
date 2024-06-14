@@ -14,84 +14,71 @@
 #include "variables.h"
 
 
-template<class type_t, class callback_c = void, uint8_t LENGTH = 1>
 struct gtuple
 {
 private:
-    static_assert(!std::is_same<callback_c, void>::value, "The tuple functor must be non void");
-    static_assert(LENGTH > 0, "The length must not be 0");
-
-
     static constexpr char TAG[] = "GTPL";
 
+    uint8_t* const source;
+    const unsigned SIZE;
+    const unsigned LENGTH;
 
 public:
-    constexpr unsigned size() const
+    gtuple(uint8_t* const source, unsigned size, unsigned length = 1):
+    	source(source), SIZE(size), LENGTH(length)
     {
-        return sizeof(type_t);
+    	BEDUG_ASSERT(size, "Size must not be 0");
+    	BEDUG_ASSERT(length, "Length must not be 0");
     }
 
-    constexpr uint8_t length() const
+    unsigned length()
     {
-        return LENGTH;
+    	return LENGTH;
+    }
+
+    unsigned item_size()
+    {
+        return SIZE;
+    }
+
+    unsigned full_size()
+    {
+        return item_size() * length();
+    }
+
+    bool is_tartget(uint8_t* const tartget)
+    {
+    	return tartget == reinterpret_cast<void*>(source);
     }
 
     void details(const uint8_t index = 0)
     {
-        printTagLog(TAG, "Details: index = %u; size = %d; length = %u\n", index, sizeof(type_t), length());
+        printTagLog(TAG, "Details: pointer=%hhn index = %u; size = %d; length = %u\n", (int8_t*)source, index, item_size(), length());
     }
 
-    type_t deserialize(const uint8_t* src)
+    void set(uint8_t* const src, const uint8_t index = 0)
     {
-    	type_t value = std::numeric_limits<type_t>::min();
-
-        if (!src) {
-            BEDUG_ASSERT(false, "The source must not be null");
-        	return value;
-        }
-
-		for (unsigned i = 0; i < sizeof(type_t); i++) {
-			uint8_t tmp = const_cast<uint8_t*>(src)[i];
-			value <<= BITS_IN_BYTE;
-			value |= tmp;
-		}
-
-		return value;
-    }
-
-    uint8_t* serialize(const uint8_t index = 0)
-    {
-    	static uint8_t buffer[sizeof(type_t)] = {};
-    	memset(buffer, 0, sizeof(buffer));
-
-        type_t value = static_cast<type_t>(callback_c::get(index));
-        if (index >= length()) {
-            BEDUG_ASSERT(false, "The index is out of range");
-            details(index);
-        	return buffer;
-        }
-
-		for (unsigned i = sizeof(type_t); i > 0; i--) {
-			buffer[i] = static_cast<uint8_t>(value & 0xFF);
-			value >>= BITS_IN_BYTE;
-		}
-
-		return buffer;
-    }
-
-    void set(type_t value, const uint8_t index = 0)
-    {
-    	if (value == callback_c::get(index)) {
+    	BEDUG_ASSERT(index < full_size(), "Index is out of range");
+    	BEDUG_ASSERT(src, "Source must not be NULL");
+    	if (!src || index >= full_size()) {
     		return;
     	}
-        callback_c::set(value, index);
+    	memcpy(&source[index * item_size()], src, item_size());
     }
 
-    void set_key(const size_t key)
+    void get(uint8_t* const dst, const uint8_t index = 0)
     {
-    	callback_c::key = key;
+    	BEDUG_ASSERT(index < length(), "Index is out of range");
+    	BEDUG_ASSERT(dst, "Destination must not be NULL");
+    	if (!dst) {
+    		return;
+    	}
+    	uint8_t* tmp = &source[full_size() - 1];
+    	if (index < full_size()) {
+    		tmp = &source[index * item_size()];
+    	}
+    	memcpy(dst, tmp, item_size());
     }
-
 };
 
 

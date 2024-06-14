@@ -17,9 +17,9 @@ extern "C" {
 
 
 typedef struct __attribute__((packed)) _pack_t {
-    size_t   key;
+    uint32_t key;
     uint8_t  index;
-    uint8_t  data[sizeof(size_t)];
+    uint8_t  data[sizeof(uint64_t)];
     uint16_t crc;
 } pack_t;
 
