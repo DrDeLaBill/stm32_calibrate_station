@@ -4,6 +4,7 @@
 
 #include <string.h>
 
+#include "log.h"
 #include "main.h"
 #include "soul.h"
 #include "utils.h"
@@ -19,8 +20,12 @@
 #define PUMP_MEAS_COUNT (10)
 #define PUMP_MEAS_MS    (100)
 
-#define PUMP_SESSION_ML_MIN ((uint32_t)1000)
+#define PUMP_SESSION_ML_MIN ((uint32_t)500)
 #define PUMP_SLOW_ML_VALUE  ((uint32_t)1000)
+
+#if PUMP_BEDUG
+const char PUMP_TAG[] = "PUMP";
+#endif
 
 
 struct pump_t {
@@ -80,7 +85,7 @@ FSM_GC_CREATE_TABLE(
     { &pump_idle_s,   &pump_error_e,    &pump_error_s },
     { &pump_start_s,  &pump_success_e,  &pump_work_s  },
     { &pump_start_s,  &pump_stop_e,     &pump_stop_s  },
-    { &pump_start_s,  &pump_negative_e, &pump_idle_s  },
+    { &pump_start_s,  &pump_negative_e, &pump_stop_s  },
     { &pump_work_s,   &pump_stop_e,     &pump_stop_s  },
     { &pump_work_s,   &pump_error_e,    &pump_error_s },
     { &pump_stop_s,   &pump_success_e,  &pump_idle_s  },
@@ -109,12 +114,15 @@ void set_pump_target(uint32_t target_ml)
 void pump_start()
 {
 	pump.need_start = true;
+	pump.need_stop  = false;
+	pump.stopped    = false;
 }
 
 void pump_stop()
 {
 	pump.need_start = false;
 	pump.need_stop  = true;
+	pump.stopped    = false;
 }
 
 uint32_t pump_count_ml()
@@ -224,6 +232,10 @@ void _pump_start_s()
 		return;
 	}
 
+#if PUMP_BEDUG
+	printTagLog(PUMP_TAG, "pump is started target=%lu", pump.target_ml);
+#endif
+
 	pump.stopped = false;
 	pump.need_start = false;
 	pump.measure_ml_add = 0;
@@ -258,6 +270,9 @@ void _pump_work_s()
 
     uint32_t curr_ml = _pump_encoder_ml();
     if (_pump_encoder_ticks() < pump.measure_ticks_add) {
+#if PUMP_BEDUG
+        printTagLog(PUMP_TAG, "pump isn't working: current gas ticks=%ld; target=%lu", pump.measure_ticks_add, pump.target_ml);
+#endif
     	_pump_set_ticks((uint32_t)pump.measure_ticks_add);
     }
 
@@ -277,6 +292,10 @@ void _pump_work_s()
         return;
     }
 
+#if PUMP_BEDUG
+    printTagLog(PUMP_TAG, "current gas ml: %lu (summary: %ld ticks, add: %lu ticks); target: %lu", _pump_summary_ml(), _pump_summary_ticks(), pump.measure_ticks_add, pump.target_ml);
+#endif
+
     pump.measure_ml_add = _pump_encoder_ml();
     pump.measure_ticks_add = _pump_encoder_ticks();
 
@@ -290,15 +309,23 @@ void _pump_work_s()
     }
 
     if (_pump_summary_ml() >= pump.target_ml) {
+#if PUMP_BEDUG
+    	printTagLog(PUMP_TAG, "result ticks ml: %lu (%lu ticks)", _pump_summary_ml(), _pump_summary_ticks());
+#endif
 		fsm_gc_push_event(&pump_fsm, &pump_stop_e);
     }
 }
 
 void _pump_stop_s()
 {
+#if PUMP_BEDUG
+    printTagLog(PUMP_TAG, "pump stopped");
+#endif
+
 	pump.stopped = true;
 	pump.last_ml = _pump_summary_ml();
 
+	pump.need_start = false;
 	pump.need_stop = false;
 	pump.target_ml = 0;
 	pump.measure_ml_add = 0;

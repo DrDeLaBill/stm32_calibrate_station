@@ -15,7 +15,7 @@
 #define LEVEL_ERROR         (-1)
 #define LEVEL_DELAY_MS      ((uint32_t)100)
 #define LEVEL_MEASURE_COUNT (10)
-#define LEVEL_MEASURE_DELAY ((uint32_t)300)
+#define LEVEL_MEASURE_DELAY ((uint32_t)30)
 
 
 typedef struct _sens_state_t {

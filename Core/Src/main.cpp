@@ -88,7 +88,6 @@ uint8_t gprotocol_buf[sizeof(pack_t)] = {};
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 
-void update_app_info();
 void system_error_handler();
 
 /* USER CODE END PFP */
@@ -147,7 +146,11 @@ int main(void)
 
 	app_init();
 
+	// Slave RS232 start
     HAL_UART_Receive_IT(&RS232_UART, (uint8_t*)&gprotocol_buf[gprotocol_counter++], 1);
+
+    // Gas sensor encoder
+    HAL_TIM_Encoder_Start(&MD212_TIM, TIM_CHANNEL_ALL);
 
 	printTagLog(MAIN_TAG, "The device is loaded successfully");
 
@@ -223,11 +226,6 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-
-void update_app_info()
-{
-
-}
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {

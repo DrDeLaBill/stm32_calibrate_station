@@ -91,7 +91,6 @@ void _app_idle_s()
 {
 	if (app_info.start && app_info.target_ml) {
 		app_info.result_ml = 0;
-		set_pump_target(app_info.target_ml);
 		fsm_gc_push_event(&app_fsm, &app_start_e);
 	}
 	if (has_errors()) {
@@ -104,6 +103,7 @@ void _app_start_s()
 	if (has_errors()) {
 		fsm_gc_push_event(&app_fsm, &app_error_e);
 	} else {
+		set_pump_target(app_info.target_ml);
 		pump_start();
 		set_status(WORKING);
 		fsm_gc_push_event(&app_fsm, &app_success_e);

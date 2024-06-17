@@ -13,6 +13,9 @@ extern "C" {
 #include <stdbool.h>
 
 
+#define PUMP_BEDUG (1)
+
+
 void pump_init();
 void pump_proccess();
 
