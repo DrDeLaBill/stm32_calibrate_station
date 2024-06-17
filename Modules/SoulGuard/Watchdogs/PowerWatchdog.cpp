@@ -4,11 +4,9 @@
 
 #include "log.h"
 #include "soul.h"
-#include "clock.h"
 #include "hal_defs.h"
 #include "settings.h"
 
-#include "SettingsDB.h"
 #include "CodeStopwatch.h"
 
 
@@ -35,7 +33,7 @@ uint32_t PowerWatchdog::getPower()
 
 void PowerWatchdog::check()
 {
-	utl::CodeStopwatch stopwatch(TAG, GENERAL_TIMEOUT_MS);
+	utl::CodeStopwatch stopwatch(TAG, WATCHDOG_TIMEOUT_MS);
 
 #ifdef POWER_Pin
 	if (getPower() < TRIG_LEVEL) {

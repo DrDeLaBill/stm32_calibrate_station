@@ -10,6 +10,7 @@ extern "C" {
 
 
 #include <stdint.h>
+#include <stdbool.h>
 
 
 void pump_init();
@@ -18,6 +19,9 @@ void pump_proccess();
 void set_pump_target(uint32_t);
 void pump_start();
 void pump_stop();
+
+uint32_t pump_count_ml();
+bool pump_stopped();
 
 
 #ifdef __cplusplus

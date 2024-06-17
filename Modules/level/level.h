@@ -10,14 +10,10 @@ extern "C" {
 
 
 #include <stdint.h>
-#include <stdbool.h>
 
-#include "hal_defs.h"
 
 void     level_tick();
-int32_t  get_liquid_level();
-uint16_t get_liquid_adc();
-bool     is_liquid_tank_empty();
+uint32_t get_liquid_adc();
 
 
 #ifdef __cplusplus

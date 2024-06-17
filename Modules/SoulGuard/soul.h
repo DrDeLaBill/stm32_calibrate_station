@@ -21,6 +21,8 @@ typedef enum _SOUK_STATUS {
 	STATUSES_START,
 
 	WAIT_LOAD,
+	MEMORY_READ_FAULT,
+	MEMORY_WRITE_FAULT,
 	MODBUS_FAULT,
 	PUMP_FAULT,
 	RTC_FAULT,
@@ -63,6 +65,7 @@ typedef struct _soul_t {
 
 
 bool has_errors();
+unsigned get_first_error();
 
 bool is_error(SOUL_STATUS error);
 void set_error(SOUL_STATUS error);

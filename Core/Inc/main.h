@@ -78,10 +78,6 @@ int _write(int file, uint8_t *ptr, int len);
 // Defines
 #define ML_IN_LTR                ((uint32_t)1000)
 
-// EEPROM
-extern I2C_HandleTypeDef         hi2c1;
-#define EEPROM_I2C               (hi2c1)
-
 // BEDUG UART
 extern UART_HandleTypeDef        huart2;
 #define BEDUG_UART               (huart2)
@@ -93,10 +89,6 @@ extern UART_HandleTypeDef        huart1;
 // PUMP
 extern TIM_HandleTypeDef         htim3;
 #define MD212_TIM                (htim3)
-
-// Watchdog
-//extern IWDG_HandleTypeDef        hiwdg; // TODO
-//#define DEVICE_IWDG              (hiwdg)
 
 /* USER CODE END Private defines */
 

@@ -50,6 +50,7 @@ void RestartWatchdog::check()
 
 void RestartWatchdog::reset_i2c_errata()
 {
+#ifdef EEPROM_I2C
 	printTagLog(TAG, "RESET I2C (ERRATA)");
 
 //	EEPROM_I2C.Instance->CR1 |= I2C_CR1_SWRST;
@@ -118,4 +119,5 @@ void RestartWatchdog::reset_i2c_errata()
 	EEPROM_I2C.Instance->CR1 |= 0x0001;
 
 	HAL_I2C_Init(&EEPROM_I2C);
+#endif
 }

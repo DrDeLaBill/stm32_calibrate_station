@@ -5,8 +5,11 @@
 #include "main.h"
 #include "soul.h"
 #include "pump.h"
+#include "level.h"
 #include "fsm_gc.h"
 
+
+void _update_info();
 
 void _app_init_s();
 void _app_idle_s();
@@ -59,9 +62,23 @@ void app_proccess()
 {
 	pump_proccess();
 
+	_update_info();
+
     fsm_gc_proccess(&app_fsm);
 }
 
+void _update_info()
+{
+	app_info.level_adc = get_liquid_adc();
+
+	if (has_errors()) {
+		app_info.status = get_first_error();
+	} else if (is_status(WAIT_LOAD)) {
+		app_info.status = WAIT_LOAD;
+	} else {
+		app_info.status = 0;
+	}
+}
 
 void _app_init_s()
 {
@@ -71,6 +88,8 @@ void _app_init_s()
 void _app_idle_s()
 {
 	if (app_info.start && app_info.target_ml) {
+		app_info.result_ml = 0;
+		set_pump_target(app_info.target_ml);
 		fsm_gc_push_event(&app_fsm, &app_start_e);
 	}
 	if (has_errors()) {
@@ -90,7 +109,7 @@ void _app_start_s()
 
 void _app_count_s()
 {
-	if (app_info.result_ml >= app_info.target_ml) {
+	if (pump_stopped()) {
 		fsm_gc_push_event(&app_fsm, &app_stop_e);
 	}
 	if (has_errors()) {
@@ -100,6 +119,9 @@ void _app_count_s()
 
 void _app_stop_s()
 {
+	app_info.start = 0;
+	app_info.result_ml = pump_count_ml();
+
 	if (has_errors()) {
 		fsm_gc_push_event(&app_fsm, &app_error_e);
 	} else {
@@ -110,6 +132,7 @@ void _app_stop_s()
 void _app_error_s()
 {
 	pump_stop();
+
 	if (!has_errors()) {
 		fsm_gc_clear(&app_fsm);
 		fsm_gc_push_event(&app_fsm, &app_success_e);

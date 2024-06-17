@@ -3,7 +3,6 @@
 #include "pump.h"
 
 #include <string.h>
-#include <stdbool.h>
 
 #include "main.h"
 #include "soul.h"
@@ -20,7 +19,8 @@
 #define PUMP_MEAS_COUNT (10)
 #define PUMP_MEAS_MS    (100)
 
-#define PUMP_SLOW_ML_VALUE ((uint32_t)1000)
+#define PUMP_SESSION_ML_MIN ((uint32_t)1000)
+#define PUMP_SLOW_ML_VALUE  ((uint32_t)1000)
 
 
 struct pump_t {
@@ -32,6 +32,9 @@ struct pump_t {
 	uint32_t         measure_ml_base;
 	uint32_t         measure_ml_add;
 	util_old_timer_t err_timer;
+
+	bool             stopped;
+	uint32_t         last_ml;
 } pump;
 
 
@@ -76,6 +79,7 @@ FSM_GC_CREATE_TABLE(
     { &pump_idle_s,   &pump_stop_e,     &pump_stop_s  },
     { &pump_idle_s,   &pump_error_e,    &pump_error_s },
     { &pump_start_s,  &pump_success_e,  &pump_work_s  },
+    { &pump_start_s,  &pump_stop_e,     &pump_stop_s  },
     { &pump_start_s,  &pump_negative_e, &pump_idle_s  },
     { &pump_work_s,   &pump_stop_e,     &pump_stop_s  },
     { &pump_work_s,   &pump_error_e,    &pump_error_s },
@@ -96,6 +100,9 @@ void pump_proccess()
 
 void set_pump_target(uint32_t target_ml)
 {
+	if (is_error(PUMP_ERROR) || target_ml < PUMP_SESSION_ML_MIN) {
+		return;
+	}
 	pump.target_ml = target_ml;
 }
 
@@ -108,6 +115,16 @@ void pump_stop()
 {
 	pump.need_start = false;
 	pump.need_stop  = true;
+}
+
+uint32_t pump_count_ml()
+{
+	return pump.last_ml;
+}
+
+bool pump_stopped()
+{
+	return pump.stopped;
 }
 
 void _pump_enable()
@@ -156,7 +173,7 @@ void _pump_set_ticks(uint32_t ticks)
 
 void _pump_reset_ticks()
 {
-    __HAL_TIM_SET_COUNTER(&MD212_TIM, PUMP_TICKS_MID);
+	_pump_set_ticks(0);
 }
 
 uint32_t _pump_encoder_ml()
@@ -198,11 +215,21 @@ void _pump_start_s()
 		return;
 	}
 
+	if (pump.need_stop) {
+		fsm_gc_push_event(&pump_fsm, &pump_stop_e);
+		return;
+	}
+
 	if (!_pump_gun_ready()) {
 		return;
 	}
 
-	memset((uint8_t*)&pump, 0, sizeof(pump));
+	pump.stopped = false;
+	pump.need_start = false;
+	pump.measure_ml_add = 0;
+	pump.measure_ml_base = 0;
+	pump.measure_ticks_add = 0;
+	pump.measure_ticks_base = 0;
 
 	_pump_reset_ticks();
 
@@ -214,8 +241,14 @@ void _pump_start_s()
 
 void _pump_work_s()
 {
+	if (is_error(PUMP_ERROR)) {
+		fsm_gc_push_event(&pump_fsm, &pump_error_e);
+		return;
+	}
+
 	if (pump.need_stop) {
 		fsm_gc_push_event(&pump_fsm, &pump_stop_e);
+		return;
 	}
 
     if (!_pump_gun_ready()) {
@@ -263,6 +296,16 @@ void _pump_work_s()
 
 void _pump_stop_s()
 {
+	pump.stopped = true;
+	pump.last_ml = _pump_summary_ml();
+
+	pump.need_stop = false;
+	pump.target_ml = 0;
+	pump.measure_ml_add = 0;
+	pump.measure_ml_base = 0;
+	pump.measure_ticks_add = 0;
+	pump.measure_ticks_base = 0;
+
 	_pump_disable();
 
 	fsm_gc_push_event(&pump_fsm, &pump_success_e);

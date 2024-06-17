@@ -19,8 +19,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "adc.h"
-#include "i2c.h"
-#include "rtc.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
@@ -31,14 +29,11 @@
 #include "soul.h"
 #include "level.h"
 #include "bmacro.h"
-#include "at24cm01.h"
 
 #include "gprotocol.h"
 
 #include "Timer.h"
-#include "StorageAT.h"
 #include "SoulGuard.h"
-#include "StorageDriver.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -63,19 +58,11 @@ static constexpr char MAIN_TAG[] = "MAIN";
 
 extern settings_t settings;
 
-StorageDriver storageDriver;
-StorageAT storage(
-	eeprom_get_size() / STORAGE_PAGE_SIZE,
-	&storageDriver
-);
-
 SoulGuard<
 	RestartWatchdog,
-	MemoryWatchdog,
 	StackWatchdog,
 	SettingsWatchdog,
-	PowerWatchdog,
-	RTCWatchdog
+	PowerWatchdog
 > soulGuard;
 
 
@@ -85,8 +72,9 @@ std::unordered_map<uint32_t, gtuple> table = {
 	{GP_KEY_STR("fw_id"),     {reinterpret_cast<uint8_t*>(&settings.fw_id),     sizeof(settings.fw_id)}},
 	{GP_KEY_STR("start"),     {reinterpret_cast<uint8_t*>(&app_info.start),     sizeof(app_info.start)}},
 	{GP_KEY_STR("target_ml"), {reinterpret_cast<uint8_t*>(&app_info.target_ml), sizeof(app_info.target_ml)}},
-	{GP_KEY_STR("level"),     {reinterpret_cast<uint8_t*>(&app_info.level),     sizeof(app_info.level)}},
-	{GP_KEY_STR("result_ml"), {reinterpret_cast<uint8_t*>(&app_info.result_ml), sizeof(app_info.result_ml)}}
+	{GP_KEY_STR("level_adc"), {reinterpret_cast<uint8_t*>(&app_info.level_adc), sizeof(app_info.level_adc)}},
+	{GP_KEY_STR("result_ml"), {reinterpret_cast<uint8_t*>(&app_info.result_ml), sizeof(app_info.result_ml)}},
+	{GP_KEY_STR("status"),    {reinterpret_cast<uint8_t*>(&app_info.status),     sizeof(app_info.status)}}
 };
 gprotocol protocol(table);
 utl::Timer pTimer(100);
@@ -138,25 +126,22 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_I2C1_Init();
   MX_USART2_UART_Init();
-  MX_RTC_Init();
   MX_ADC1_Init();
   MX_USART1_UART_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
 
-	set_status(WAIT_LOAD);
-
 	HAL_Delay(100);
-
-	gprint("\n\n\n");
-	printTagLog(MAIN_TAG, "The device is loading");
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+	set_status(WAIT_LOAD);
+
+	gprint("\n\n\n");
+	printTagLog(MAIN_TAG, "The device is loading");
 
 	while (is_status(WAIT_LOAD)) soulGuard.defend();
 
@@ -165,6 +150,8 @@ int main(void)
     HAL_UART_Receive_IT(&RS232_UART, (uint8_t*)&gprotocol_buf[gprotocol_counter++], 1);
 
 	printTagLog(MAIN_TAG, "The device is loaded successfully");
+
+	reset_status(WAIT_LOAD);
 
 	pTimer.start();
 	while (1)
@@ -207,9 +194,8 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 4;

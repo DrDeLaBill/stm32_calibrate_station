@@ -9,7 +9,6 @@
 #include "main.h"
 #include "soul.h"
 #include "utils.h"
-#include "clock.h"
 #include "hal_defs.h"
 
 
@@ -76,16 +75,7 @@ void settings_repair(settings_t* other)
 void settings_show()
 {
 	printPretty("################SETTINGS################\n");
-    RTC_DateTypeDef date;
-    RTC_TimeTypeDef time;
-    if (!clock_get_rtc_date(&date)) {
-        memset((void*)(&date), 0, sizeof(date));
-    }
-    if (!clock_get_rtc_time(&time)) {
-        memset((void*)(&time), 0, sizeof(time));
-    }
-	printPretty("Current time: 20%02u-%02u-%02uT%02u:%02u:%02u\n", date.Year, date.Month, date.Date, time.Hours, time.Minutes, time.Seconds);
-	printPretty("Device type: %u\n", settings.dv_type);
+    printPretty("Device type: %u\n", settings.dv_type);
 	printPretty("Software v%u\n", settings.sw_id);
 	printPretty("Firmware v%u\n", settings.fw_id);
 	printPretty("################SETTINGS################\n");
