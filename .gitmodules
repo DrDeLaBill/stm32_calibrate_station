@@ -1,6 +1,3 @@
-[submodule "Modules/StorageAT"]
-	path = Modules/StorageAT
-	url = https://github.com/DrDeLaBill/StorageAT.git
 [submodule "Modules/Utils"]
 	path = Modules/Utils
 	url = https://github.com/DrDeLaBill/Utils.git
