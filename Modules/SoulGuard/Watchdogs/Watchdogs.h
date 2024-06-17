@@ -48,8 +48,6 @@ private:
 
 struct SettingsWatchdog
 {
-	SettingsWatchdog();
-
 	void check();
 };
 

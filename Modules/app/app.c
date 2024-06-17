@@ -75,6 +75,8 @@ void _update_info()
 		app_info.status = get_first_error();
 	} else if (is_status(WAIT_LOAD)) {
 		app_info.status = WAIT_LOAD;
+	} else if (is_status(WORKING)) {
+		app_info.status = WORKING;
 	} else {
 		app_info.status = 0;
 	}
@@ -103,6 +105,7 @@ void _app_start_s()
 		fsm_gc_push_event(&app_fsm, &app_error_e);
 	} else {
 		pump_start();
+		set_status(WORKING);
 		fsm_gc_push_event(&app_fsm, &app_success_e);
 	}
 }
@@ -110,6 +113,7 @@ void _app_start_s()
 void _app_count_s()
 {
 	if (pump_stopped()) {
+		reset_status(WORKING);
 		fsm_gc_push_event(&app_fsm, &app_stop_e);
 	}
 	if (has_errors()) {
@@ -132,6 +136,7 @@ void _app_stop_s()
 void _app_error_s()
 {
 	pump_stop();
+	reset_status(WORKING);
 
 	if (!has_errors()) {
 		fsm_gc_clear(&app_fsm);

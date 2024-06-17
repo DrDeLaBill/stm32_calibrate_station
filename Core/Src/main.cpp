@@ -74,7 +74,7 @@ std::unordered_map<uint32_t, gtuple> table = {
 	{GP_KEY_STR("target_ml"), {reinterpret_cast<uint8_t*>(&app_info.target_ml), sizeof(app_info.target_ml)}},
 	{GP_KEY_STR("level_adc"), {reinterpret_cast<uint8_t*>(&app_info.level_adc), sizeof(app_info.level_adc)}},
 	{GP_KEY_STR("result_ml"), {reinterpret_cast<uint8_t*>(&app_info.result_ml), sizeof(app_info.result_ml)}},
-	{GP_KEY_STR("status"),    {reinterpret_cast<uint8_t*>(&app_info.status),     sizeof(app_info.status)}}
+	{GP_KEY_STR("status"),    {reinterpret_cast<uint8_t*>(&app_info.status),    sizeof(app_info.status)}}
 };
 gprotocol protocol(table);
 utl::Timer pTimer(100);

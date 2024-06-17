@@ -9,18 +9,12 @@
 #include "CodeStopwatch.h"
 
 
-
-SettingsWatchdog::SettingsWatchdog()
-{
-	settings_reset(&settings);
-	set_status(WAIT_LOAD);
-}
-
 void SettingsWatchdog::check()
 {
 	utl::CodeStopwatch stopwatch("STNG", GENERAL_TIMEOUT_MS);
 
 	if (!settings_check(&settings)) {
 		settings_repair(&settings);
+		reset_status(WAIT_LOAD);
 	}
 }

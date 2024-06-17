@@ -16,51 +16,52 @@ extern "C" {
 #include "hal_defs.h"
 
 
-typedef enum _SOUK_STATUS {
-	/* Device statuses start */
-	STATUSES_START,
+typedef enum _SOUL_STATUS {
+    /* Device statuses start */
+    STATUSES_START,
 
-	WAIT_LOAD,
-	MEMORY_READ_FAULT,
-	MEMORY_WRITE_FAULT,
-	MODBUS_FAULT,
-	PUMP_FAULT,
-	RTC_FAULT,
-	NEED_INIT_RECORD_TMP,
-	NEED_SAVE_RECORD_TMP,
-	NEED_SAVE_FINAL_RECORD,
-	SETTINGS_INITIALIZED,
-	NEED_LOAD_SETTINGS,
-	NEED_SAVE_SETTINGS,
-	NEED_UPDATE_MODBUS_REGS,
+    WAIT_LOAD,
+    WORKING,
+    MEMORY_READ_FAULT,
+    MEMORY_WRITE_FAULT,
+    MODBUS_FAULT,
+    PUMP_FAULT,
+    RTC_FAULT,
+    NEED_INIT_RECORD_TMP,
+    NEED_SAVE_RECORD_TMP,
+    NEED_SAVE_FINAL_RECORD,
+    SETTINGS_INITIALIZED,
+    NEED_LOAD_SETTINGS,
+    NEED_SAVE_SETTINGS,
+    NEED_UPDATE_MODBUS_REGS,
 
-	/* Device statuses end */
-	STATUSES_END,
+    /* Device statuses end */
+    STATUSES_END,
 
-	/* Device errors start */
-	ERRORS_START,
+    /* Device errors start */
+    ERRORS_START,
 
-	MEMORY_ERROR,
-	POWER_ERROR,
-	STACK_ERROR,
-	LOAD_ERROR,
-	RAM_ERROR,
-	SETTINGS_LOAD_ERROR,
-	ASSERT_ERROR,
-	ERROR_HANDLER_CALLED,
-	INTERNAL_ERROR,
-	PUMP_ERROR,
+    MEMORY_ERROR,
+    POWER_ERROR,
+    STACK_ERROR,
+    LOAD_ERROR,
+    RAM_ERROR,
+    SETTINGS_LOAD_ERROR,
+    ASSERT_ERROR,
+    ERROR_HANDLER_CALLED,
+    INTERNAL_ERROR,
+    PUMP_ERROR,
 
-	/* Device errors end */
-	ERRORS_END,
+    /* Device errors end */
+    ERRORS_END,
 
-	/* Paste device errors or statuses to the top */
-	SOUL_STATUSES_END
+    /* Paste device errors or statuses to the top */
+    SOUL_STATUSES_END
 } SOUL_STATUS;
 
 
 typedef struct _soul_t {
-	uint8_t errors[__div_up(SOUL_STATUSES_END - 1, BITS_IN_BYTE)];
+    uint8_t errors[__div_up(SOUL_STATUSES_END - 1, BITS_IN_BYTE)];
 } soul_t;
 
 
