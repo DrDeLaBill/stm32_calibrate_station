@@ -2,8 +2,8 @@
 
 #include "greport.h"
 
-#include "log.h"
-#include "utils.h"
+#include "glog.h"
+#include "gutils.h"
 
 
 uint16_t pack_crc(const pack_t* report)

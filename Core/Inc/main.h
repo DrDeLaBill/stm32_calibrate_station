@@ -79,12 +79,12 @@ int _write(int file, uint8_t *ptr, int len);
 #define ML_IN_LTR                ((uint32_t)1000)
 
 // BEDUG UART
-extern UART_HandleTypeDef        huart2;
-#define BEDUG_UART               (huart2)
+extern UART_HandleTypeDef        huart1;
+#define BEDUG_UART               (huart1)
 
 // BEDUG UART
-extern UART_HandleTypeDef        huart1;
-#define RS232_UART               (huart1)
+extern UART_HandleTypeDef        huart2;
+#define RS232_UART               (huart2)
 
 // PUMP
 extern TIM_HandleTypeDef         htim3;

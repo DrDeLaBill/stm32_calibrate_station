@@ -6,15 +6,15 @@
 
 #include <unordered_map>
 
-#include "log.h"
-#include "main.h"
-#include "utils.h"
+#include "hal_defs.h"
+
+#include "glog.h"
+#include "gutils.h"
 #include "gtuple.h"
 #include "greport.h"
-#include "settings.h"
 
 #ifdef USE_HAL_DRIVER
-#   include "hal_defs.h"
+#   include "main.h"
 #elif defined(ESP32)
 	// Include Витали
 #else
@@ -145,6 +145,9 @@ public:
 			return;
 		}
 
+    	printTagLog(TAG, "Request:");
+    	pack_show(request);
+
     	pack_t response = {};
     	response.key    = 0;
     	response.index  = request->index;
@@ -187,16 +190,18 @@ public:
     	pack_show(&request);
 	}
 
-	void master_recieve(pack_t* response)
+	bool master_recieve(pack_t* response)
 	{
 		if (response->crc != pack_crc(response)) {
-			return;
+			return false;
 		}
 
 		set_from_serialized(response->key, response->data, response->index);
 
     	printTagLog(TAG, "Response:");
     	pack_show(response);
+
+    	return true;
 	}
 
 };

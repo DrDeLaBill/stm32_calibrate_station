@@ -4,10 +4,10 @@
 
 #include <string.h>
 
-#include "log.h"
+#include "glog.h"
 #include "main.h"
 #include "soul.h"
-#include "utils.h"
+#include "gutils.h"
 #include "fsm_gc.h"
 
 
@@ -253,6 +253,8 @@ void _pump_start_s()
 
 void _pump_work_s()
 {
+	pump.last_ml = _pump_summary_ml();
+
 	if (is_error(PUMP_ERROR)) {
 		fsm_gc_push_event(&pump_fsm, &pump_error_e);
 		return;

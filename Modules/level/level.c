@@ -5,9 +5,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "log.h"
+#include "glog.h"
 #include "main.h"
-#include "utils.h"
+#include "gutils.h"
 
 
 #define LEVEL_HADC          (hadc1)

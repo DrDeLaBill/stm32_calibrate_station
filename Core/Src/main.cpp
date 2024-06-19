@@ -77,9 +77,10 @@ std::unordered_map<uint32_t, gtuple> table = {
 	{GP_KEY_STR("status"),    {reinterpret_cast<uint8_t*>(&app_info.status),    sizeof(app_info.status)}}
 };
 gprotocol protocol(table);
-utl::Timer pTimer(100);
+utl::Timer pTimer(800);
 bool pHasPacket = false;
 unsigned gprotocol_counter = 0;
+uint8_t gp_var = 0;
 uint8_t gprotocol_buf[sizeof(pack_t)] = {};
 
 /* USER CODE END PV */
@@ -147,7 +148,8 @@ int main(void)
 	app_init();
 
 	// Slave RS232 start
-    HAL_UART_Receive_IT(&RS232_UART, (uint8_t*)&gprotocol_buf[gprotocol_counter++], 1);
+    HAL_UART_Receive_IT(&RS232_UART, &gp_var, 1);
+    gprotocol_counter++;
 
     // Gas sensor encoder
     HAL_TIM_Encoder_Start(&MD212_TIM, TIM_CHANNEL_ALL);
@@ -234,15 +236,21 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 			gprotocol_counter = 0;
 			pHasPacket = false;
 			pTimer.start();
-		} else {
-			gprotocol_counter++;
 		}
+
+        if (!pHasPacket) {
+        	gprotocol_buf[gprotocol_counter++] = gp_var;
+        }
+
         if (gprotocol_counter >= sizeof(pack_t)) {
         	pHasPacket = true;
         	gprotocol_counter = 0;
         }
+
         pTimer.start();
-        HAL_UART_Receive_IT(&RS232_UART, (uint8_t*)&gprotocol_buf[gprotocol_counter], 1);
+        HAL_UART_Receive_IT(&RS232_UART, &gp_var, 1);
+    } else if (huart->Instance == BEDUG_UART.Instance) {
+    	asm("nop");
     } else {
     	system_error_handler();
     }

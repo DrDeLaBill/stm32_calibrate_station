@@ -112,12 +112,20 @@ void _app_start_s()
 
 void _app_count_s()
 {
+	app_info.result_ml = pump_count_ml();
+
 	if (pump_stopped()) {
 		reset_status(WORKING);
 		fsm_gc_push_event(&app_fsm, &app_stop_e);
+		return;
+	}
+	if (!app_info.start) {
+		pump_stop();
+		return;
 	}
 	if (has_errors()) {
 		fsm_gc_push_event(&app_fsm, &app_error_e);
+		return;
 	}
 }
 

@@ -9,7 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "log.h"
+#include "glog.h"
 
 #include "variables.h"
 
