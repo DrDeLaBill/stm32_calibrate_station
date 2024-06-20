@@ -65,8 +65,6 @@ int _write(int file, uint8_t *ptr, int len);
 #define VALVE2_GPIO_Port GPIOC
 #define PUMP_Pin GPIO_PIN_0
 #define PUMP_GPIO_Port GPIOA
-#define LEVEL_Pin GPIO_PIN_1
-#define LEVEL_GPIO_Port GPIOA
 #define GUN_SWITCH_Pin GPIO_PIN_8
 #define GUN_SWITCH_GPIO_Port GPIOA
 
@@ -79,12 +77,16 @@ int _write(int file, uint8_t *ptr, int len);
 #define ML_IN_LTR                ((uint32_t)1000)
 
 // BEDUG UART
-extern UART_HandleTypeDef        huart1;
-#define BEDUG_UART               (huart1)
+extern UART_HandleTypeDef        huart2;
+#define BEDUG_UART               (huart2)
 
 // BEDUG UART
-extern UART_HandleTypeDef        huart2;
-#define RS232_UART               (huart2)
+extern UART_HandleTypeDef        huart1;
+#define RS232_UART               (huart1)
+
+// MODBUS UART
+extern UART_HandleTypeDef        huart6;
+#define MODBUS_UART              (huart6)
 
 // PUMP
 extern TIM_HandleTypeDef         htim3;

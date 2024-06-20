@@ -1,7 +1,7 @@
 /* Copyright © 2023 Georgy E. All rights reserved. */
 
-#ifndef _LEVEL_H_
-#define _LEVEL_H_
+#ifndef _MODBUS_H_
+#define _MODBUS_H_
 
 
 #ifdef __cplusplus
@@ -12,8 +12,10 @@ extern "C" {
 #include <stdint.h>
 
 
-void     level_tick();
-uint32_t get_liquid_adc();
+void modbus_init();
+void modbus_tick();
+void modbus_recieve(uint8_t byte);
+
 
 
 #ifdef __cplusplus

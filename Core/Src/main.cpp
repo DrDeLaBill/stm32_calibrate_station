@@ -18,7 +18,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "adc.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
@@ -27,9 +26,9 @@
 /* USER CODE BEGIN Includes */
 #include "app.h"
 #include "soul.h"
-#include "level.h"
 #include "bmacro.h"
 
+#include "modbus.h"
 #include "gprotocol.h"
 
 #include "Timer.h"
@@ -77,11 +76,14 @@ std::unordered_map<uint32_t, gtuple> table = {
 	{GP_KEY_STR("status"),    {reinterpret_cast<uint8_t*>(&app_info.status),    sizeof(app_info.status)}}
 };
 gprotocol protocol(table);
-utl::Timer pTimer(800);
-bool pHasPacket = false;
-unsigned gprotocol_counter = 0;
-uint8_t gp_var = 0;
-uint8_t gprotocol_buf[sizeof(pack_t)] = {};
+
+utl::Timer gpTimer(GENERAL_TIMEOUT_MS);
+bool gpHasPacket = false;
+unsigned gpCounter = 0;
+uint8_t gpVar = 0;
+uint8_t gpBuf[sizeof(pack_t)] = {};
+
+uint8_t mbVar = 0;
 
 /* USER CODE END PV */
 
@@ -127,9 +129,9 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
-  MX_ADC1_Init();
   MX_USART1_UART_Init();
   MX_TIM3_Init();
+  MX_USART6_UART_Init();
   /* USER CODE BEGIN 2 */
 
 	HAL_Delay(100);
@@ -148,8 +150,11 @@ int main(void)
 	app_init();
 
 	// Slave RS232 start
-    HAL_UART_Receive_IT(&RS232_UART, &gp_var, 1);
-    gprotocol_counter++;
+    HAL_UART_Receive_IT(&RS232_UART, &gpVar, 1);
+    gpCounter++;
+
+    // MODBUS
+    HAL_UART_Receive_IT(&MODBUS_UART, &mbVar, 1);
 
     // Gas sensor encoder
     HAL_TIM_Encoder_Start(&MD212_TIM, TIM_CHANNEL_ALL);
@@ -158,7 +163,7 @@ int main(void)
 
 	reset_status(WAIT_LOAD);
 
-	pTimer.start();
+	gpTimer.start();
 	while (1)
 	{
 		soulGuard.defend();
@@ -172,11 +177,9 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-		level_tick();
-
-		if (pHasPacket) {
-			protocol.slave_recieve(reinterpret_cast<pack_t*>(gprotocol_buf));
-			pHasPacket = false;
+		if (gpHasPacket) {
+			protocol.slave_recieve(reinterpret_cast<pack_t*>(gpBuf));
+			gpHasPacket = false;
 		}
 	}
   /* USER CODE END 3 */
@@ -232,23 +235,26 @@ void SystemClock_Config(void)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     if (huart->Instance == RS232_UART.Instance) {
-		if (!pTimer.wait()) {
-			gprotocol_counter = 0;
-			pHasPacket = false;
-			pTimer.start();
+		if (!gpTimer.wait()) {
+			gpCounter = 0;
+			gpHasPacket = false;
+			gpTimer.start();
 		}
 
-        if (!pHasPacket) {
-        	gprotocol_buf[gprotocol_counter++] = gp_var;
+        if (!gpHasPacket) {
+        	gpBuf[gpCounter++] = gpVar;
         }
 
-        if (gprotocol_counter >= sizeof(pack_t)) {
-        	pHasPacket = true;
-        	gprotocol_counter = 0;
+        if (gpCounter >= sizeof(pack_t)) {
+        	gpHasPacket = true;
+        	gpCounter = 0;
         }
 
-        pTimer.start();
-        HAL_UART_Receive_IT(&RS232_UART, &gp_var, 1);
+        gpTimer.start();
+        HAL_UART_Receive_IT(&RS232_UART, &gpVar, 1);
+    } else if (huart->Instance == MODBUS_UART.Instance) {
+    	modbus_recieve(mbVar);
+        HAL_UART_Receive_IT(&MODBUS_UART, &mbVar, 1);
     } else if (huart->Instance == BEDUG_UART.Instance) {
     	asm("nop");
     } else {
@@ -259,9 +265,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 void system_error_handler()
 {
-	utl::Timer timer(30000);
-	timer.start();
-	while (timer.wait());
+	__disable_irq();
+	uint32_t counter = HAL_RCC_GetHCLKFreq();
+	while(--counter);
 	NVIC_SystemReset();
 }
 

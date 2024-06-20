@@ -5,8 +5,8 @@
 #include "main.h"
 #include "soul.h"
 #include "pump.h"
-#include "level.h"
 #include "fsm_gc.h"
+#include "modbus.h"
 
 
 void _update_info();
@@ -53,6 +53,8 @@ app_info_t app_info = {0};
 
 void app_init()
 {
+    modbus_init();
+
 	pump_init();
 
 	fsm_gc_init(&app_fsm, app_fsm_table, __arr_len(app_fsm_table));
@@ -60,6 +62,8 @@ void app_init()
 
 void app_proccess()
 {
+	modbus_tick();
+
 	pump_proccess();
 
 	_update_info();
@@ -69,8 +73,6 @@ void app_proccess()
 
 void _update_info()
 {
-	app_info.level_adc = get_liquid_adc();
-
 	if (has_errors()) {
 		app_info.status = get_first_error();
 	} else if (is_status(WAIT_LOAD)) {
