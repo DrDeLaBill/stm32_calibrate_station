@@ -16,6 +16,8 @@ extern "C" {
 #define DEVICE_MAJOR (0)
 #define DEVICE_MINOR (1)
 #define DEVICE_PATCH (0)
+
+
 /*
  * Device types:
  * 0x0001 - Dispenser
@@ -23,6 +25,7 @@ extern "C" {
  * 0x0003 - Logger
  * 0x0004 - B.O.B.A.
  * 0x0005 - Calibrate station
+ * 0x0006 - Dispenser-mini
  */
 #define DEVICE_TYPE ((uint16_t)0x0005)
 #define SW_VERSION  ((uint8_t)0x01)

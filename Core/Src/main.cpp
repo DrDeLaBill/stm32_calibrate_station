@@ -18,6 +18,9 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
+#include "dma.h"
+#include "rtc.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
@@ -27,8 +30,9 @@
 #include "app.h"
 #include "soul.h"
 #include "bmacro.h"
-
+#include "system.h"
 #include "modbus.h"
+#include "settings.h"
 #include "gprotocol.h"
 
 #include "Timer.h"
@@ -55,15 +59,12 @@
 
 static constexpr char MAIN_TAG[] = "MAIN";
 
-extern settings_t settings;
-
 SoulGuard<
 	RestartWatchdog,
 	StackWatchdog,
 	SettingsWatchdog,
 	PowerWatchdog
 > soulGuard;
-
 
 std::unordered_map<uint32_t, gtuple> table = {
 	{GP_KEY_STR("dv_type"),   {reinterpret_cast<uint8_t*>(&settings.dv_type),   sizeof(settings.dv_type)}},
@@ -91,7 +92,7 @@ uint8_t mbVar = 0;
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 
-void system_error_handler();
+void error_loop();
 
 /* USER CODE END PFP */
 
@@ -107,7 +108,7 @@ void system_error_handler();
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+	system_pre_load();
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -116,36 +117,43 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+  if (is_error(RCC_ERROR)) {
+	  system_clock_hsi_config();
+  } else {
   /* USER CODE END Init */
 
   /* Configure the system clock */
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-
+  }
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART2_UART_Init();
   MX_USART1_UART_Init();
   MX_TIM3_Init();
   MX_USART6_UART_Init();
+  MX_ADC1_Init();
+  MX_RTC_Init();
   /* USER CODE BEGIN 2 */
-
-	HAL_Delay(100);
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	set_status(WAIT_LOAD);
+	set_status(LOADING);
+
+	HAL_Delay(100);
+
+    utl::Timer errTimer(40 * SECOND_MS);
 
 	gprint("\n\n\n");
 	printTagLog(MAIN_TAG, "The device is loading");
 
-	while (is_status(WAIT_LOAD)) soulGuard.defend();
+	SystemInfo();
 
 	app_init();
 
@@ -159,18 +167,43 @@ int main(void)
     // Gas sensor encoder
     HAL_TIM_Encoder_Start(&MD212_TIM, TIM_CHANNEL_ALL);
 
+    errTimer.start();
+	while (has_errors() || is_status(LOADING)) {
+		soulGuard.defend();
+
+    	if (!errTimer.wait()) {
+			system_error_handler((SOUL_STATUS)get_first_error(), error_loop);
+		}
+	}
+
+    system_post_load();
+
 	printTagLog(MAIN_TAG, "The device is loaded successfully");
 
-	reset_status(WAIT_LOAD);
-
-	gpTimer.start();
+#ifdef DEBUG
+	static unsigned last_error = get_first_error();
+#endif
+	set_status(WORKING);
+	errTimer.start();
 	while (1)
 	{
 		soulGuard.defend();
 
+#ifdef DEBUG
+		unsigned error = get_first_error();
+		if (error && last_error != error) {
+			printTagLog(MAIN_TAG, "New error: %u", error);
+			last_error = error;
+		}
+#endif
+
 		app_proccess();
 
-		if (has_errors()) {
+		if (!errTimer.wait()) {
+			system_error_handler((SOUL_STATUS)get_first_error(), error_loop);
+		}
+
+		if (has_errors() || is_status(LOADING)) {
 			continue;
 		}
 
@@ -181,6 +214,8 @@ int main(void)
 			protocol.slave_recieve(reinterpret_cast<pack_t*>(gpBuf));
 			gpHasPacket = false;
 		}
+
+		errTimer.start();
 	}
   /* USER CODE END 3 */
 }
@@ -202,8 +237,9 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 4;
@@ -258,17 +294,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     } else if (huart->Instance == BEDUG_UART.Instance) {
     	asm("nop");
     } else {
-    	system_error_handler();
+    	system_error_handler(INTERNAL_ERROR, error_loop);
     }
-}
-
-
-void system_error_handler()
-{
-	__disable_irq();
-	uint32_t counter = HAL_RCC_GetHCLKFreq();
-	while(--counter);
-	NVIC_SystemReset();
 }
 
 int _write(int, uint8_t *ptr, int len) {
@@ -284,6 +311,11 @@ int _write(int, uint8_t *ptr, int len) {
     return 0;
 }
 
+void error_loop()
+{
+	soulGuard.defend();
+}
+
 /* USER CODE END 4 */
 
 /**
@@ -294,8 +326,8 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
     b_assert(__FILE__, __LINE__, "The error handler has been called");
-	set_error(ERROR_HANDLER_CALLED);
-	system_error_handler();
+	SOUL_STATUS err = has_errors() ? (SOUL_STATUS)get_first_error() : ERROR_HANDLER_CALLED;
+	system_error_handler(err, error_loop);
   /* USER CODE END Error_Handler_Debug */
 }
 
@@ -311,8 +343,8 @@ void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
 	b_assert((char*)file, line, "Wrong parameters value");
-	set_error(ASSERT_ERROR);
-	system_error_handler();
+	SOUL_STATUS err = has_errors() ? (SOUL_STATUS)get_first_error() : ASSERT_ERROR;
+	system_error_handler(err, error_loop);
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

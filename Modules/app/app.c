@@ -75,8 +75,8 @@ void _update_info()
 {
 	if (has_errors()) {
 		app_info.status = get_first_error();
-	} else if (is_status(WAIT_LOAD)) {
-		app_info.status = WAIT_LOAD;
+	} else if (is_status(LOADING)) {
+		app_info.status = LOADING;
 	} else if (is_status(WORKING)) {
 		app_info.status = WORKING;
 	} else {

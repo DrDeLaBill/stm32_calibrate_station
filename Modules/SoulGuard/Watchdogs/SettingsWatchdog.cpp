@@ -15,6 +15,6 @@ void SettingsWatchdog::check()
 
 	if (!settings_check(&settings)) {
 		settings_repair(&settings);
-		reset_status(WAIT_LOAD);
+		reset_status(LOADING);
 	}
 }
