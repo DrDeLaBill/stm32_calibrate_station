@@ -11,6 +11,11 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "STM32_adapter_BA_BLE.h"
+
+
+#define NETWORK_ADDRESS_SENSOR	2
+
 
 typedef struct _app_info_t {
     uint8_t  start;
@@ -22,6 +27,8 @@ typedef struct _app_info_t {
 
 
 extern app_info_t app_info;
+
+extern Adapter_BA_BLE ba_ble;
 
 
 void app_init();
