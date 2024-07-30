@@ -50,7 +50,7 @@ void modbus_recieve(uint8_t byte)
 
 void _request_data_sender(uint8_t* data, uint32_t len)
 {
-	HAL_UART_Transmit(&MODBUS_UART, data, (uint16_t)len, (uint16_t)GENERAL_TIMEOUT_MS);
+//	HAL_UART_Transmit(&MODBUS_UART, data, (uint16_t)len, (uint16_t)GENERAL_TIMEOUT_MS);
 }
 
 void _response_packet_handler(modbus_response_t* packet)

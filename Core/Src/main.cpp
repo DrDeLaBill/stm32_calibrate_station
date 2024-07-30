@@ -37,6 +37,8 @@
 
 #include "Timer.h"
 #include "SoulGuard.h"
+
+#include "STM32_adapter_BA_BLE.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -155,17 +157,19 @@ int main(void)
 
 	SystemInfo();
 
-	app_init();
-
 	// Slave RS232 start
     HAL_UART_Receive_IT(&RS232_UART, &gpVar, 1);
     gpCounter++;
 
     // MODBUS
-    HAL_UART_Receive_IT(&MODBUS_UART, &mbVar, 1);
+//    HAL_UART_Receive_IT(&MODBUS_UART, &mbVar, 1);
+
 
     // Gas sensor encoder
     HAL_TIM_Encoder_Start(&MD212_TIM, TIM_CHANNEL_ALL);
+
+	app_init();
+	adapter_BA_BLE_single_data_read(&ba_ble, NETWORK_ADDRESS_SENSOR);
 
     errTimer.start();
 	while (has_errors() || is_status(LOADING)) {
@@ -289,10 +293,15 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         gpTimer.start();
         HAL_UART_Receive_IT(&RS232_UART, &gpVar, 1);
     } else if (huart->Instance == MODBUS_UART.Instance) {
-    	modbus_recieve(mbVar);
-        HAL_UART_Receive_IT(&MODBUS_UART, &mbVar, 1);
+    	adapter_BA_BLE_rx_cplt_callback(&ba_ble);
+
+//    	modbus_recieve(mbVar);
+//        HAL_UART_Receive_IT(&MODBUS_UART, &mbVar, 1);
     } else if (huart->Instance == BEDUG_UART.Instance) {
     	asm("nop");
+
+//    } else if (huart->Instance == RS484.Instance) {
+
     } else {
     	system_error_handler(INTERNAL_ERROR, error_loop);
     }
