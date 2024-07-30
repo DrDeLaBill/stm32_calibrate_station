@@ -33,11 +33,10 @@
 #include "system.h"
 #include "settings.h"
 #include "gprotocol.h"
+#include "STM32_adapter_BA_BLE.h"
 
 #include "Timer.h"
 #include "SoulGuard.h"
-
-#include "STM32_adapter_BA_BLE.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
