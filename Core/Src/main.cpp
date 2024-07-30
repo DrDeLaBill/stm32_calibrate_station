@@ -31,7 +31,6 @@
 #include "soul.h"
 #include "bmacro.h"
 #include "system.h"
-#include "modbus.h"
 #include "settings.h"
 #include "gprotocol.h"
 
@@ -76,7 +75,8 @@ std::unordered_map<uint32_t, gtuple> table = {
 	{GP_KEY_STR("target_ml"), {reinterpret_cast<uint8_t*>(&app_info.target_ml), sizeof(app_info.target_ml)}},
 	{GP_KEY_STR("level_adc"), {reinterpret_cast<uint8_t*>(&app_info.level_adc), sizeof(app_info.level_adc)}},
 	{GP_KEY_STR("result_ml"), {reinterpret_cast<uint8_t*>(&app_info.result_ml), sizeof(app_info.result_ml)}},
-	{GP_KEY_STR("status"),    {reinterpret_cast<uint8_t*>(&app_info.status),    sizeof(app_info.status)}}
+	{GP_KEY_STR("status"),    {reinterpret_cast<uint8_t*>(&app_info.status),    sizeof(app_info.status)}},
+	{GP_KEY_STR("sens_addr"), {reinterpret_cast<uint8_t*>(&app_info.sens_addr), sizeof(app_info.sens_addr)}},
 };
 gprotocol protocol(table);
 
@@ -85,8 +85,6 @@ bool gpHasPacket = false;
 unsigned gpCounter = 0;
 uint8_t gpVar = 0;
 uint8_t gpBuf[sizeof(pack_t)] = {};
-
-uint8_t mbVar = 0;
 
 /* USER CODE END PV */
 
@@ -161,15 +159,10 @@ int main(void)
     HAL_UART_Receive_IT(&RS232_UART, &gpVar, 1);
     gpCounter++;
 
-    // MODBUS
-//    HAL_UART_Receive_IT(&MODBUS_UART, &mbVar, 1);
-
-
     // Gas sensor encoder
     HAL_TIM_Encoder_Start(&MD212_TIM, TIM_CHANNEL_ALL);
 
 	app_init();
-	adapter_BA_BLE_single_data_read(&ba_ble, NETWORK_ADDRESS_SENSOR);
 
     errTimer.start();
 	while (has_errors() || is_status(LOADING)) {
@@ -292,16 +285,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
         gpTimer.start();
         HAL_UART_Receive_IT(&RS232_UART, &gpVar, 1);
-    } else if (huart->Instance == MODBUS_UART.Instance) {
+    } else if (huart->Instance == RS485_UART.Instance) {
     	adapter_BA_BLE_rx_cplt_callback(&ba_ble);
-
-//    	modbus_recieve(mbVar);
-//        HAL_UART_Receive_IT(&MODBUS_UART, &mbVar, 1);
     } else if (huart->Instance == BEDUG_UART.Instance) {
     	asm("nop");
-
-//    } else if (huart->Instance == RS484.Instance) {
-
     } else {
     	system_error_handler(INTERNAL_ERROR, error_loop);
     }

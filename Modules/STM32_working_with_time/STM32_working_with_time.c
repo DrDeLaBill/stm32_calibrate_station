@@ -19,18 +19,18 @@ void time_static_start_delay(uint32_t time) {
 	__TIME_RESET(time_variable);
 
 	while ((uint32_t)(HAL_GetTick() - time_variable) < time);
-};
+}
 
 
 // статическая задержка
 void time_static_delay(uint32_t *time_variable, uint32_t time) {
 	while ((uint32_t)(HAL_GetTick() - *time_variable) < time);
-};
+}
 
 // динамическая задержка
 uint8_t time_dynamic_delay(uint32_t *time_variable, uint32_t time) {
 	return (uint32_t)(HAL_GetTick() - *time_variable) > time;
-};
+}
 
 
 // статическая задержка с периодическим срабатыванием
@@ -38,7 +38,7 @@ void time_static_periodic_delay(uint32_t *time_variable, uint32_t time) {
 	while ((uint32_t)(HAL_GetTick() - *time_variable) < time);
 
 	__TIME_RESET(*time_variable);
-};
+}
 
 // динамическая задержка с периодическим срабатыванием
 uint8_t time_dynamic_periodic_delay(uint32_t *time_variable, uint32_t time) {
@@ -47,4 +47,4 @@ uint8_t time_dynamic_periodic_delay(uint32_t *time_variable, uint32_t time) {
 		return 1;
 	}
 	else return 0;
-};
+}

@@ -6,14 +6,10 @@
 #include "soul.h"
 #include "pump.h"
 #include "fsm_gc.h"
-#include "modbus.h"
-
-
-
-
 
 
 void _update_info();
+uint32_t _app_get_level();
 
 void _app_init_s();
 void _app_idle_s();
@@ -59,47 +55,20 @@ Adapter_BA_BLE ba_ble;
 
 void app_init()
 {
-	adapter_BA_BLE_initialization(&ba_ble, &MODBUS_UART);
-
-    modbus_init();
+	adapter_BA_BLE_initialization(&ba_ble, &RS485_UART);
 
 	pump_init();
 
 	fsm_gc_init(&app_fsm, app_fsm_table, __arr_len(app_fsm_table));
 }
 
-uint32_t app_get_level() {
-	static uint32_t get_level = 0;
-
-	adapter_BA_BLE_while(&ba_ble);
-
-	switch(ba_ble.status) {
-		case ADAPTER_BA_BLE_ERROR:
-			set_error(SENSOR_ERROR);
-			break;
-		case ADAPTER_BA_BLE_OK:
-			reset_error(SENSOR_ERROR);
-			get_level = (uint32_t)ba_ble.data_sensor.level;
-			adapter_BA_BLE_single_data_read(&ba_ble, NETWORK_ADDRESS_SENSOR);
-			break;
-		case ADAPTER_BA_BLE_INITIALIZATION:
-		case ADAPTER_BA_BLE_EXPECTATION:
-		default:
-			break;
-	};
-
-	return get_level;
-}
-
 void app_proccess()
 {
-	modbus_tick();
-
 	pump_proccess();
 
 	_update_info();
 
-	app_info.level_adc = app_get_level();
+	app_info.level_adc = _app_get_level();
 
     fsm_gc_proccess(&app_fsm);
 }
@@ -115,6 +84,33 @@ void _update_info()
 	} else {
 		app_info.status = 0;
 	}
+}
+
+uint32_t _app_get_level() {
+	static uint32_t get_level = 0;
+
+	adapter_BA_BLE_while(&ba_ble);
+
+	if (!app_info.sens_addr) {
+		return get_level;
+	}
+
+	switch(ba_ble.status) {
+		case ADAPTER_BA_BLE_ERROR:
+			set_error(SENSOR_ERROR);
+			break;
+		case ADAPTER_BA_BLE_OK:
+			reset_error(SENSOR_ERROR);
+			get_level = (uint32_t)ba_ble.data_sensor.level;
+			adapter_BA_BLE_single_data_read(&ba_ble, app_info.sens_addr);
+			break;
+		case ADAPTER_BA_BLE_INITIALIZATION:
+		case ADAPTER_BA_BLE_EXPECTATION:
+		default:
+			break;
+	};
+
+	return get_level;
 }
 
 void _app_init_s()

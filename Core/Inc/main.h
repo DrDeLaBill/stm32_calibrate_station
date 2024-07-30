@@ -86,7 +86,7 @@ extern UART_HandleTypeDef        huart2;
 
 // MODBUS UART
 extern UART_HandleTypeDef        huart1;
-#define MODBUS_UART              (huart1)
+#define RS485_UART              (huart1)
 
 // PUMP
 extern TIM_HandleTypeDef         htim3;
