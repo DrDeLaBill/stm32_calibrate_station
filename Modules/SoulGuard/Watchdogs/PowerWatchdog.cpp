@@ -12,7 +12,7 @@ void PowerWatchdog::check()
 {
 	utl::CodeStopwatch stopwatch("PWRw", WATCHDOG_TIMEOUT_MS);
 
-	if (!is_status(WORKING)) {
+	if (!is_status(LOADED)) {
 		return;
 	}
 

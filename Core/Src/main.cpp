@@ -179,7 +179,7 @@ int main(void)
 #ifdef DEBUG
 	static unsigned last_error = get_first_error();
 #endif
-	set_status(WORKING);
+	set_status(LOADED);
 	errTimer.start();
 	while (1)
 	{
