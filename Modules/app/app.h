@@ -21,6 +21,7 @@ typedef struct _app_info_t {
     uint32_t result_ml;
     unsigned status;
     uint8_t  sens_addr;
+    uint8_t  last_addr;
 } app_info_t;
 
 

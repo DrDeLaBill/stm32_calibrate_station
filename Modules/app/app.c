@@ -87,9 +87,17 @@ void _update_info()
 }
 
 uint32_t _app_get_level() {
+	static util_old_timer_t err_timer = {0};
+	static bool err_found = false;
+
 	static uint32_t get_level = 0;
 
 	adapter_BA_BLE_while(&ba_ble);
+
+	if (app_info.sens_addr != app_info.last_addr) {
+		adapter_BA_BLE_single_data_read(&ba_ble, app_info.sens_addr);
+		app_info.last_addr = app_info.sens_addr;
+	}
 
 	if (!app_info.sens_addr) {
 		return get_level;
@@ -97,10 +105,19 @@ uint32_t _app_get_level() {
 
 	switch(ba_ble.status) {
 		case ADAPTER_BA_BLE_ERROR:
-			set_error(SENSOR_ERROR);
+			if (!util_old_timer_wait(&err_timer) && !err_found) {
+				util_old_timer_start(&err_timer, 15000);
+				err_found = true;
+			}
+			if (!util_old_timer_wait(&err_timer)) {
+				set_error(SENSOR_ERROR);
+				err_found = false;
+			}
 			break;
 		case ADAPTER_BA_BLE_OK:
 			reset_error(SENSOR_ERROR);
+			err_found = false;
+
 			get_level = (uint32_t)ba_ble.data_sensor.level;
 			adapter_BA_BLE_single_data_read(&ba_ble, app_info.sens_addr);
 			break;

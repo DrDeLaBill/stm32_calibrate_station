@@ -195,6 +195,11 @@ int main(void)
 
 		app_proccess();
 
+		if (gpHasPacket) {
+			protocol.slave_recieve(reinterpret_cast<pack_t*>(gpBuf));
+			gpHasPacket = false;
+		}
+
 		if (!errTimer.wait()) {
 			system_error_handler((SOUL_STATUS)get_first_error(), error_loop);
 		}
@@ -206,10 +211,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-		if (gpHasPacket) {
-			protocol.slave_recieve(reinterpret_cast<pack_t*>(gpBuf));
-			gpHasPacket = false;
-		}
 
 		errTimer.start();
 	}
