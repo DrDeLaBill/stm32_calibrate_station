@@ -20,8 +20,7 @@
 #define PUMP_MEAS_COUNT (10)
 #define PUMP_MEAS_MS    (100)
 
-#define PUMP_SESSION_ML_MIN ((uint32_t)500)
-#define PUMP_SLOW_ML_VALUE  ((uint32_t)1000)
+#define PUMP_SLOW_ML_VALUE ((uint32_t)1000)
 
 #if PUMP_BEDUG
 const char PUMP_TAG[] = "PUMP";
@@ -105,7 +104,7 @@ void pump_proccess()
 
 void set_pump_target(uint32_t target_ml)
 {
-	if (is_error(PUMP_ERROR) || target_ml < PUMP_SESSION_ML_MIN) {
+	if (is_error(PUMP_ERROR)) {
 		return;
 	}
 	pump.target_ml = target_ml;

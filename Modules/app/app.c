@@ -56,6 +56,7 @@ Adapter_BA_BLE ba_ble;
 void app_init()
 {
 	adapter_BA_BLE_initialization(&ba_ble, &RS485_UART);
+	adapter_BA_BLE_single_data_read(&ba_ble, app_info.sens_addr);
 
 	pump_init();
 
@@ -82,7 +83,7 @@ void _update_info()
 	} else if (is_status(WORKING)) {
 		app_info.status = WORKING;
 	} else {
-		app_info.status = 0;
+		app_info.status = LOADED;
 	}
 }
 
@@ -98,6 +99,7 @@ uint32_t _app_get_level() {
 		adapter_BA_BLE_single_data_read(&ba_ble, app_info.sens_addr);
 		app_info.last_addr = app_info.sens_addr;
 	}
+//	ba_ble._buffer_tx[1] = app_info.sens_addr;
 
 	if (!app_info.sens_addr) {
 		return get_level;
@@ -106,7 +108,7 @@ uint32_t _app_get_level() {
 	switch(ba_ble.status) {
 		case ADAPTER_BA_BLE_ERROR:
 			if (!util_old_timer_wait(&err_timer) && !err_found) {
-				util_old_timer_start(&err_timer, 15000);
+				util_old_timer_start(&err_timer, 60000);
 				err_found = true;
 			}
 			if (!util_old_timer_wait(&err_timer)) {

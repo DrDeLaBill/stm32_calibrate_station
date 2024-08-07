@@ -39,7 +39,7 @@ private:
 	using type_t = uint64_t;
 
 public:
-	static constexpr uint32_t str_hash(char* const data)
+	static uint32_t str_hash(const char* data)
 	{
 		uint32_t hash = 0;
 
