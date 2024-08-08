@@ -99,7 +99,6 @@ uint32_t _app_get_level() {
 		adapter_BA_BLE_single_data_read(&ba_ble, app_info.sens_addr);
 		app_info.last_addr = app_info.sens_addr;
 	}
-//	ba_ble._buffer_tx[1] = app_info.sens_addr;
 
 	if (!app_info.sens_addr) {
 		return get_level;

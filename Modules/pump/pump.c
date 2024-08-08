@@ -15,7 +15,7 @@
 #define PUMP_MD212_MLS_COUNT_MIN   ((uint32_t)10)
 #define PUMP_MD212_TRIGGER_VAL_MAX ((int32_t)30000)
 
-#define PUMP_MIN_ML     (100)
+#define PUMP_MIN_ML     (10)
 #define PUMP_TICKS_MID  ((uint32_t)0xFFFF / 2)
 #define PUMP_MEAS_COUNT (10)
 #define PUMP_MEAS_MS    (100)
@@ -320,7 +320,12 @@ void _pump_work_s()
 void _pump_stop_s()
 {
 #if PUMP_BEDUG
-    printTagLog(PUMP_TAG, "pump stopped");
+	if (HAL_GPIO_ReadPin(VALVE1_GPIO_Port, VALVE1_Pin) ||
+		HAL_GPIO_ReadPin(VALVE2_GPIO_Port, VALVE2_Pin) ||
+		HAL_GPIO_ReadPin(PUMP_GPIO_Port, PUMP_Pin)
+	) {
+		printTagLog(PUMP_TAG, "pump stopped");
+	}
 #endif
 
 	pump.stopped = true;
