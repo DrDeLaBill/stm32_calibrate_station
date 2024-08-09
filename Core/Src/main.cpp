@@ -27,7 +27,6 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
 #include "app.h"
 #include "soul.h"
 #include "bmacro.h"
@@ -38,7 +37,6 @@
 
 #include "Timer.h"
 #include "SoulGuard.h"
-
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
