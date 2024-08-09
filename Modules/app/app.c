@@ -28,24 +28,24 @@ FSM_GC_CREATE_STATE(app_count_s, _app_count_s)
 FSM_GC_CREATE_STATE(app_stop_s,  _app_stop_s)
 FSM_GC_CREATE_STATE(app_error_s, _app_error_s)
 
-FSM_GC_CREATE_EVENT(app_success_e)
-FSM_GC_CREATE_EVENT(app_negative_e)
-FSM_GC_CREATE_EVENT(app_error_e)
-FSM_GC_CREATE_EVENT(app_start_e)
-FSM_GC_CREATE_EVENT(app_stop_e)
+FSM_GC_CREATE_EVENT(app_start_e,    0)
+FSM_GC_CREATE_EVENT(app_stop_e,     0)
+FSM_GC_CREATE_EVENT(app_success_e,  1)
+FSM_GC_CREATE_EVENT(app_negative_e, 1)
+FSM_GC_CREATE_EVENT(app_error_e,    2)
 
 FSM_GC_CREATE_TABLE(
     app_fsm_table,
-    { &app_init_s,   &app_success_e, &app_idle_s  },
-    { &app_idle_s,   &app_start_e,   &app_start_s },
-    { &app_idle_s,   &app_error_e,   &app_error_s },
-    { &app_start_s,  &app_success_e, &app_count_s },
-    { &app_start_s,  &app_error_e,   &app_error_s },
-    { &app_count_s,  &app_stop_e,    &app_stop_s  },
-    { &app_count_s,  &app_error_e,   &app_error_s },
-    { &app_stop_s,   &app_success_e, &app_idle_s  },
-    { &app_stop_s,   &app_error_e,   &app_error_s },
-    { &app_error_s,  &app_success_e, &app_idle_s  }
+    { &app_init_s,   &app_success_e, &app_idle_s,  NULL},
+    { &app_idle_s,   &app_start_e,   &app_start_s, NULL},
+    { &app_idle_s,   &app_error_e,   &app_error_s, NULL},
+    { &app_start_s,  &app_success_e, &app_count_s, NULL},
+    { &app_start_s,  &app_error_e,   &app_error_s, NULL},
+    { &app_count_s,  &app_stop_e,    &app_stop_s,  NULL},
+    { &app_count_s,  &app_error_e,   &app_error_s, NULL},
+    { &app_stop_s,   &app_success_e, &app_idle_s,  NULL},
+    { &app_stop_s,   &app_error_e,   &app_error_s, NULL},
+    { &app_error_s,  &app_success_e, &app_idle_s,  NULL}
 )
 
 app_info_t app_info = {0};

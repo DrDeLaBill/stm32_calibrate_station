@@ -177,6 +177,10 @@ int main(void)
 	printTagLog(MAIN_TAG, "The device is loaded successfully");
 
 #ifdef DEBUG
+	utl::Timer kFlopsTimer(1000);
+	unsigned kFlopsCounter = 0;
+	kFlopsTimer.start();
+
 	static unsigned last_error = get_first_error();
 #endif
 	set_status(LOADED);
@@ -186,6 +190,13 @@ int main(void)
 		soulGuard.defend();
 
 #ifdef DEBUG
+		kFlopsCounter++;
+		if (!kFlopsTimer.wait()) {
+			printTagLog(MAIN_TAG, "kFLOPS: %lu", kFlopsCounter / 1000);
+			kFlopsCounter = 0;
+			kFlopsTimer.start();
+		}
+
 		unsigned error = get_first_error();
 		if (error && last_error != error) {
 			printTagLog(MAIN_TAG, "New error: %u", error);
