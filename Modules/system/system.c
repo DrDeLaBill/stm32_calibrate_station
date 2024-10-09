@@ -77,12 +77,12 @@ void system_pre_load(void)
 		while (1) {}
 	}
 
-	SET_BIT(RCC->CR, RCC_CR_HSEON_Pos);
+	__set_bit(RCC->CR, RCC_CR_HSEON_Pos);
 
 	unsigned counter = 0;
 	while (1) {
-		if (READ_BIT(RCC->CR, RCC_CR_HSERDY_Pos)) {
-			CLEAR_BIT(RCC->CR, RCC_CR_HSEON_Pos);
+		if (__get_bit(RCC->CR, RCC_CR_HSERDY_Pos)) {
+			__reset_bit(RCC->CR, RCC_CR_HSEON_Pos);
 			break;
 		}
 

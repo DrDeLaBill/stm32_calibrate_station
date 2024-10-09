@@ -19,11 +19,11 @@ extern "C" {
 void pump_init();
 void pump_proccess();
 
-void set_pump_target(uint32_t);
+void set_pump_target(int32_t);
 void pump_start();
 void pump_stop();
 
-uint32_t pump_count_ml();
+int32_t pump_count_ml();
 bool pump_stopped();
 
 

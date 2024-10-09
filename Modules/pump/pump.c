@@ -12,53 +12,63 @@
 
 
 #define PUMP_MD212_MLSx10_PER_TICK ((int32_t)25)
-#define PUMP_MD212_MLS_COUNT_MIN   ((uint32_t)10)
+#define PUMP_MD212_MLS_COUNT_MIN   ((int32_t)10)
 #define PUMP_MD212_TRIGGER_VAL_MAX ((int32_t)30000)
 
-#define PUMP_MIN_ML     (10)
-#define PUMP_TICKS_MID  ((uint32_t)0xFFFF / 2)
-#define PUMP_MEAS_COUNT (10)
-#define PUMP_MEAS_MS    (100)
+#define PUMP_MIN_ML           (10)
+#define PUMP_TICKS_MID        ((int32_t)0xFFFF / 2)
+#define PUMP_MEAS_COUNT       (10)
+#define PUMP_MEAS_MS          (100)
+#define PUMP_STOP_MS          (5000)
+#define PUMP_NOISE_MS         (500)
+#define PUMP_NOISE_HYSTERESIS (3)
 
-#define PUMP_SLOW_ML_VALUE ((uint32_t)1000)
+#define PUMP_SLOW_ML_VALUE    ((int32_t)1000)
 
 #if PUMP_BEDUG
 const char PUMP_TAG[] = "PUMP";
 #endif
 
 
-struct pump_t {
+typedef struct _pump_t {
 	bool             need_start;
 	bool             need_stop;
-	uint32_t         target_ml;
+	int32_t          target_ml;
 	int32_t          measure_ticks_base;
 	int32_t          measure_ticks_add;
-	uint32_t         measure_ml_base;
-	uint32_t         measure_ml_add;
+	int32_t          measure_ml_base;
+	int32_t          measure_ml_add;
+	util_old_timer_t timer;
 	util_old_timer_t err_timer;
 
 	bool             stopped;
-	uint32_t         last_ml;
-} pump;
+	int32_t          last_ml;
+} pump_t;
 
 
 void _pump_enable();
 void _pump_disable();
 bool _pump_gun_ready();
-void _pump_set_ticks(uint32_t ticks);
+void _pump_set_ticks(int32_t ticks);
 void _pump_reset_ticks();
 int32_t _pump_encoder_ticks();
 int32_t _pump_summary_ticks();
-uint32_t _pump_encoder_ml();
-uint32_t _pump_summary_ml();
+int32_t _pump_encoder_ml();
+int32_t _pump_summary_ml();
 
 
 void _pump_init_s();
 void _pump_idle_s();
 void _pump_start_s();
 void _pump_work_s();
+void _pump_wait_s();
 void _pump_stop_s();
 void _pump_error_s();
+
+static void wait_a(void);
+
+
+static pump_t pump = {0};
 
 
 FSM_GC_CREATE(pump_fsm)
@@ -67,6 +77,7 @@ FSM_GC_CREATE_STATE(pump_init_s,  _pump_init_s)
 FSM_GC_CREATE_STATE(pump_idle_s,  _pump_idle_s)
 FSM_GC_CREATE_STATE(pump_start_s, _pump_start_s)
 FSM_GC_CREATE_STATE(pump_work_s,  _pump_work_s)
+FSM_GC_CREATE_STATE(pump_wait_s,  _pump_wait_s)
 FSM_GC_CREATE_STATE(pump_stop_s,  _pump_stop_s)
 FSM_GC_CREATE_STATE(pump_error_s, _pump_error_s)
 
@@ -78,16 +89,24 @@ FSM_GC_CREATE_EVENT(pump_error_e,    2)
 
 FSM_GC_CREATE_TABLE(
     pump_fsm_table,
-    { &pump_init_s,   &pump_success_e,  &pump_stop_s,  NULL},
+    { &pump_init_s,   &pump_success_e,  &pump_wait_s,  wait_a},
+
     { &pump_idle_s,   &pump_start_e,    &pump_start_s, NULL},
-    { &pump_idle_s,   &pump_stop_e,     &pump_stop_s,  NULL},
+    { &pump_idle_s,   &pump_stop_e,     &pump_wait_s,  wait_a},
     { &pump_idle_s,   &pump_error_e,    &pump_error_s, NULL},
+
     { &pump_start_s,  &pump_success_e,  &pump_work_s,  NULL},
-    { &pump_start_s,  &pump_stop_e,     &pump_stop_s,  NULL},
-    { &pump_start_s,  &pump_negative_e, &pump_stop_s,  NULL},
-    { &pump_work_s,   &pump_stop_e,     &pump_stop_s,  NULL},
+    { &pump_start_s,  &pump_stop_e,     &pump_wait_s,  wait_a},
+    { &pump_start_s,  &pump_negative_e, &pump_wait_s,  wait_a},
+
+    { &pump_work_s,   &pump_stop_e,     &pump_wait_s,  wait_a},
     { &pump_work_s,   &pump_error_e,    &pump_error_s, NULL},
+
+    { &pump_wait_s,   &pump_success_e,  &pump_stop_s,  NULL},
+    { &pump_wait_s,   &pump_error_e,    &pump_error_s, NULL},
+
     { &pump_stop_s,   &pump_success_e,  &pump_idle_s,  NULL},
+
     { &pump_error_s,  &pump_success_e,  &pump_idle_s,  NULL}
 )
 
@@ -102,7 +121,7 @@ void pump_proccess()
     fsm_gc_proccess(&pump_fsm);
 }
 
-void set_pump_target(uint32_t target_ml)
+void set_pump_target(int32_t target_ml)
 {
 	if (is_error(PUMP_ERROR)) {
 		return;
@@ -124,7 +143,7 @@ void pump_stop()
 	pump.stopped    = false;
 }
 
-uint32_t pump_count_ml()
+int32_t pump_count_ml()
 {
 	return pump.last_ml;
 }
@@ -173,9 +192,10 @@ int32_t _pump_summary_ticks()
 	return pump.measure_ticks_base + pump.measure_ticks_add;
 }
 
-void _pump_set_ticks(uint32_t ticks)
+void _pump_set_ticks(int32_t ticks)
 {
-	__HAL_TIM_SET_COUNTER(&MD212_TIM, (uint32_t)ticks + PUMP_TICKS_MID);
+
+	__HAL_TIM_SET_COUNTER(&MD212_TIM, (uint32_t)(ticks + PUMP_TICKS_MID));
 }
 
 void _pump_reset_ticks()
@@ -183,12 +203,12 @@ void _pump_reset_ticks()
 	_pump_set_ticks(0);
 }
 
-uint32_t _pump_encoder_ml()
+int32_t _pump_encoder_ml()
 {
-    return (uint32_t)((_pump_encoder_ticks() * PUMP_MD212_MLSx10_PER_TICK) / 10);
+    return (int32_t)((_pump_encoder_ticks() * PUMP_MD212_MLSx10_PER_TICK) / 10);
 }
 
-uint32_t _pump_summary_ml()
+int32_t _pump_summary_ml()
 {
     return pump.measure_ml_base + pump.measure_ml_add;
 }
@@ -269,12 +289,12 @@ void _pump_work_s()
 		return;
     }
 
-    uint32_t curr_ml = _pump_encoder_ml();
+    int32_t curr_ml = _pump_encoder_ml();
     if (_pump_encoder_ticks() < pump.measure_ticks_add) {
 #if PUMP_BEDUG
         printTagLog(PUMP_TAG, "pump isn't working: current gas ticks=%ld; target=%lu", pump.measure_ticks_add, pump.target_ml);
 #endif
-    	_pump_set_ticks((uint32_t)pump.measure_ticks_add);
+    	_pump_set_ticks((int32_t)pump.measure_ticks_add);
     }
 
     if (__abs_dif(curr_ml, _pump_summary_ml()) == 0) {
@@ -301,7 +321,7 @@ void _pump_work_s()
     pump.measure_ticks_add = _pump_encoder_ticks();
 
 
-    uint32_t fast_target_ml =
+    int32_t fast_target_ml =
         pump.target_ml > PUMP_SLOW_ML_VALUE ?
 		pump.target_ml - PUMP_SLOW_ML_VALUE :
         0;
@@ -315,6 +335,30 @@ void _pump_work_s()
 #endif
 		fsm_gc_push_event(&pump_fsm, &pump_stop_e);
     }
+}
+
+void _pump_wait_s()
+{
+	if (!util_old_timer_wait(&pump.err_timer)) {\
+		fsm_gc_push_event(&pump_fsm, &pump_error_e);
+	}
+
+	int32_t curr_enc  = _pump_encoder_ticks();
+	int32_t curr_full = _pump_summary_ticks() + curr_enc;
+	if (__abs_dif(curr_full, _pump_summary_ticks()) > PUMP_NOISE_HYSTERESIS) {
+		util_old_timer_start(&pump.timer, PUMP_NOISE_MS);
+		pump.measure_ml_base += _pump_encoder_ml();
+		_pump_reset_ticks();
+		return;
+	}
+	if (util_old_timer_wait(&pump.timer)) {
+		return;
+	}
+
+	pump.measure_ml_base += _pump_encoder_ml();
+	_pump_reset_ticks();
+
+	fsm_gc_push_event(&pump_fsm, &pump_success_e);
 }
 
 void _pump_stop_s()
@@ -339,8 +383,6 @@ void _pump_stop_s()
 	pump.measure_ticks_add = 0;
 	pump.measure_ticks_base = 0;
 
-	_pump_disable();
-
 	fsm_gc_push_event(&pump_fsm, &pump_success_e);
 }
 
@@ -351,4 +393,15 @@ void _pump_error_s()
 	if (!is_error(PUMP_ERROR)) {
 		fsm_gc_push_event(&pump_fsm, &pump_success_e);
 	}
+}
+
+void wait_a(void)
+{
+	_pump_disable();
+
+    pump.measure_ml_base += pump.measure_ml_add;
+    pump.measure_ml_add = 0;
+
+	util_old_timer_start(&pump.err_timer, PUMP_STOP_MS);
+	util_old_timer_start(&pump.timer, PUMP_NOISE_MS);
 }

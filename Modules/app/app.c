@@ -31,7 +31,7 @@ FSM_GC_CREATE_STATE(app_error_s, _app_error_s)
 FSM_GC_CREATE_EVENT(app_start_e,    0)
 FSM_GC_CREATE_EVENT(app_stop_e,     0)
 FSM_GC_CREATE_EVENT(app_success_e,  1)
-FSM_GC_CREATE_EVENT(app_negative_e, 1)
+//FSM_GC_CREATE_EVENT(app_negative_e, 1)
 FSM_GC_CREATE_EVENT(app_error_e,    2)
 
 FSM_GC_CREATE_TABLE(
@@ -111,7 +111,7 @@ uint32_t _app_get_level() {
 				err_found = true;
 			}
 			if (!util_old_timer_wait(&err_timer)) {
-				set_error(SENSOR_ERROR);
+//				set_error(SENSOR_ERROR);
 				err_found = false;
 			}
 			break;

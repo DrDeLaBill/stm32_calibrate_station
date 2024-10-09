@@ -177,7 +177,7 @@ int main(void)
 	printTagLog(MAIN_TAG, "The device is loaded successfully");
 
 #ifdef DEBUG
-	utl::Timer kFlopsTimer(1000);
+	utl::Timer kFlopsTimer(10 * SECOND_MS);
 	unsigned kFlopsCounter = 0;
 	kFlopsTimer.start();
 
@@ -192,7 +192,12 @@ int main(void)
 #ifdef DEBUG
 		kFlopsCounter++;
 		if (!kFlopsTimer.wait()) {
-			printTagLog(MAIN_TAG, "kFLOPS: %lu", kFlopsCounter / 1000);
+			printTagLog(
+				MAIN_TAG,
+				"kFLOPS: %lu.%lu",
+				kFlopsCounter / (10 * SECOND_MS),
+				(kFlopsCounter / SECOND_MS) % 10
+			);
 			kFlopsCounter = 0;
 			kFlopsTimer.start();
 		}

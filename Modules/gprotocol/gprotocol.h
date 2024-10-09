@@ -4,6 +4,7 @@
 #define _GTRANSFER_H_
 
 
+#include <cstring>
 #include <unordered_map>
 
 #include "hal_defs.h"
@@ -15,8 +16,8 @@
 
 #ifdef USE_HAL_DRIVER
 #   include "main.h"
-#elif defined(ESP32)
-	// Include Витали
+#elif defined(ARDUINO)
+#   include <Arduino.h>
 #else
 #   error Please check your platform
 #endif
@@ -30,11 +31,19 @@
 #   define GP_KEY_STR(STR) gprotocol::str_hash((char*)STR)
 #endif
 
+#ifndef GP_KEY_SIZE
+#   define GP_KEY_SIZE     (32)
+#endif
+
 
 struct gprotocol
 {
 private:
 	static constexpr char TAG[] = "GPTL";
+
+#ifdef DEBUG
+//	static std::unordered_map<uint32_t, std::string> debug_table;
+#endif
 
 	using type_t = uint64_t;
 
@@ -53,6 +62,10 @@ public:
 		hash ^= (hash >> 11);
 		hash += (hash << 15);
 
+#ifdef DEBUG
+//		debug_table.insert(std::make_pair(hash, std::string(data)));
+#endif
+
 		return hash;
 	}
 
@@ -63,8 +76,8 @@ private:
 	{
 #ifdef USE_HAL_DRIVER
 		HAL_UART_Transmit(&RS232_UART, reinterpret_cast<uint8_t*>(report), sizeof(pack_t), 100);
-#elif defined(ESP32)
-		// Code Витали
+#elif defined(ARDUINO)
+		SERIAL_TRK.write(reinterpret_cast<uint8_t*>(report), sizeof(pack_t));
 #endif
 	}
 
@@ -145,8 +158,10 @@ public:
 			return;
 		}
 
+#ifdef DEBUG
     	printTagLog(TAG, "Request:");
     	pack_show(request);
+#endif
 
     	pack_t response = {};
     	response.key    = 0;
@@ -166,8 +181,10 @@ public:
 
     	send_report(&response);
 
+#ifdef DEBUG
     	printTagLog(TAG, "Response:");
     	pack_show(&response);
+#endif
 	}
 
 	void master_send(const bool send, const uint32_t key, const uint8_t index = 0)
@@ -186,8 +203,11 @@ public:
 		request.crc = pack_crc(&request);
 
     	send_report(&request);
+
+#ifdef DEBUG
     	printTagLog(TAG, "Request:");
     	pack_show(&request);
+#endif
 	}
 
 	bool master_recieve(pack_t* response)
@@ -198,13 +218,20 @@ public:
 
 		set_from_serialized(response->key, response->data, response->index);
 
+#ifdef DEBUG
     	printTagLog(TAG, "Response:");
     	pack_show(response);
+#endif
 
     	return true;
 	}
 
 };
+
+
+#ifdef DEBUG
+//std::unordered_map<uint32_t, std::string> gprotocol::debug_table;
+#endif
 
 
 #endif
