@@ -194,7 +194,6 @@ int32_t _pump_summary_ticks()
 
 void _pump_set_ticks(int32_t ticks)
 {
-
 	__HAL_TIM_SET_COUNTER(&MD212_TIM, (uint32_t)(ticks + PUMP_TICKS_MID));
 }
 
@@ -216,6 +215,7 @@ int32_t _pump_summary_ml()
 void _pump_init_s()
 {
 	memset((uint8_t*)&pump, 0, sizeof(pump));
+	_pump_reset_ticks();
 	fsm_gc_push_event(&pump_fsm, &pump_success_e);
 }
 
@@ -339,7 +339,7 @@ void _pump_work_s()
 
 void _pump_wait_s()
 {
-	if (!util_old_timer_wait(&pump.err_timer)) {\
+	if (!util_old_timer_wait(&pump.err_timer)) {
 		fsm_gc_push_event(&pump_fsm, &pump_error_e);
 	}
 
@@ -357,6 +357,10 @@ void _pump_wait_s()
 
 	pump.measure_ml_base += _pump_encoder_ml();
 	_pump_reset_ticks();
+
+#if PUMP_BEDUG
+	printTagLog(PUMP_TAG, "Pump result measure ml base: %lu", pump.measure_ml_base);
+#endif
 
 	fsm_gc_push_event(&pump_fsm, &pump_success_e);
 }
@@ -398,9 +402,12 @@ void _pump_error_s()
 void wait_a(void)
 {
 	_pump_disable();
+	_pump_reset_ticks();
 
     pump.measure_ml_base += pump.measure_ml_add;
     pump.measure_ml_add = 0;
+    pump.measure_ticks_base += pump.measure_ticks_add;
+    pump.measure_ticks_add = 0;
 
 	util_old_timer_start(&pump.err_timer, PUMP_STOP_MS);
 	util_old_timer_start(&pump.timer, PUMP_NOISE_MS);
