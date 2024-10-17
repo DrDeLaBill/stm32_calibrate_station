@@ -4,6 +4,7 @@
 
 #include "glog.h"
 #include "gutils.h"
+#include "hal_defs.h"
 
 
 uint16_t pack_crc(const pack_t* report)

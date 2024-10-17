@@ -16,10 +16,13 @@ extern "C" {
 #define PACK_GETTER_KEY ((uint8_t)0x00)
 
 
+#define GPROTOCOL_DATA_SIZE (sizeof(uint64_t))
+
+
 typedef struct __attribute__((packed)) _pack_t {
     uint32_t key;
     uint8_t  index;
-    uint8_t  data[sizeof(uint64_t)];
+    uint8_t  data[GPROTOCOL_DATA_SIZE];
     uint16_t crc;
 } pack_t;
 

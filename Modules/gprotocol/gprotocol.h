@@ -14,12 +14,23 @@
 #include "gtuple.h"
 #include "greport.h"
 
+
 #ifdef USE_HAL_DRIVER
 #   include "main.h"
 #elif defined(ARDUINO)
 #   include <Arduino.h>
 #else
 #   error Please check your platform
+#endif
+
+
+#ifdef DEBUG
+#   if GPROTOCOL_BEDUG_LEVEL > 0 || defined(GPROTOCOL_BEDUG)
+#       define GPROTOCOL_BEDUG_L1
+#   endif
+#   if GPROTOCOL_BEDUG_LEVEL > 1
+#       define GPROTOCOL_BEDUG_L2
+#   endif
 #endif
 
 
@@ -41,11 +52,15 @@ struct gprotocol
 private:
 	static constexpr char TAG[] = "GPTL";
 
-#ifdef DEBUG
-//	static std::unordered_map<uint32_t, std::string> debug_table;
+#ifdef GPROTOCOL_BEDUG_L1
+	static std::unordered_map<uint32_t, char*> debug_table;
 #endif
 
 	using type_t = uint64_t;
+
+#ifdef GPROTOCOL_BEDUG_L1
+	bool is_master_last_get;
+#endif
 
 public:
 	static uint32_t str_hash(const char* data)
@@ -62,8 +77,13 @@ public:
 		hash ^= (hash >> 11);
 		hash += (hash << 15);
 
-#ifdef DEBUG
-//		debug_table.insert(std::make_pair(hash, std::string(data)));
+#ifdef GPROTOCOL_BEDUG_L1
+		if (debug_table.find(hash) == debug_table.end()) {
+			char* name = new char[strlen(data) + 1];
+			memset(name, 0, strlen(data) + 1);
+			memcpy(name, data, strlen(data));
+			debug_table.insert(std::make_pair(hash, name));
+		}
 #endif
 
 		return hash;
@@ -72,12 +92,34 @@ public:
 private:
 	std::unordered_map<uint32_t, gtuple>& table;
 
+#ifdef GPROTOCOL_BEDUG_L1
+	void pack_show_hum(const uint32_t key, const uint8_t index, const uint8_t* data, const bool is_get)
+	{
+    	auto it = debug_table.find(key);
+    	BEDUG_ASSERT(it != debug_table.end(), "Debug table not found error");
+    	if (it != debug_table.end()) {
+        	printPretty(
+    			"%s[%03u] %s: ",
+				it->second,
+				index,
+				(is_get ? "get" : "set")
+    		);
+			for (unsigned i = 0; i < GPROTOCOL_DATA_SIZE; i++) {
+				gprint("%03u ", data[i]);
+			}
+            gprint("\n");
+    	} else {
+    		printPretty("key: %lu\n", key);
+    	}
+	}
+#endif
+
 	void send_report(pack_t* const report)
 	{
 #ifdef USE_HAL_DRIVER
 		HAL_UART_Transmit(&RS232_UART, reinterpret_cast<uint8_t*>(report), sizeof(pack_t), 100);
 #elif defined(ARDUINO)
-		SERIAL_TRK.write(reinterpret_cast<uint8_t*>(report), sizeof(pack_t));
+		Serial2.write(reinterpret_cast<uint8_t*>(report), sizeof(pack_t));
 #endif
 	}
 
@@ -150,18 +192,17 @@ private:
 
 
 public:
-	gprotocol(std::unordered_map<uint32_t, gtuple>& table): table(table) {}
+	gprotocol(std::unordered_map<uint32_t, gtuple>& table):
+#ifdef GPROTOCOL_BEDUG_L1
+		is_master_last_get(false),
+#endif
+		table(table) {}
 
 	void slave_recieve(pack_t* request)
 	{
 		if (request->crc != pack_crc(request)) {
 			return;
 		}
-
-#ifdef DEBUG
-    	printTagLog(TAG, "Request:");
-    	pack_show(request);
-#endif
 
     	pack_t response = {};
     	response.key    = 0;
@@ -175,20 +216,35 @@ public:
     		set_from_serialized(request->key, request->data, request->index);
     	}
 
+#ifdef GPROTOCOL_BEDUG_L1
+    	printTagLog(TAG, "Request:");
+    	pack_show_hum(response.key, request->index, request->data, request->key == PACK_GETTER_KEY);
+#endif
+#ifdef GPROTOCOL_BEDUG_L2
+    	pack_show(request);
+#endif
+
     	get_serialized(response.key, response.data, response.index);
 
     	response.crc = pack_crc(&response);
 
     	send_report(&response);
 
-#ifdef DEBUG
+#ifdef GPROTOCOL_BEDUG_L1
     	printTagLog(TAG, "Response:");
+    	pack_show_hum(response.key, response.index, response.data, request->key == PACK_GETTER_KEY);
+#endif
+#ifdef GPROTOCOL_BEDUG_L2
     	pack_show(&response);
 #endif
 	}
 
 	void master_send(const bool send, const uint32_t key, const uint8_t index = 0)
 	{
+#ifdef GPROTOCOL_BEDUG_L1
+		is_master_last_get = !send;
+#endif
+
 		pack_t request = {};
 		request.key = PACK_GETTER_KEY;
 		request.index = index;
@@ -204,8 +260,11 @@ public:
 
     	send_report(&request);
 
-#ifdef DEBUG
+#ifdef GPROTOCOL_BEDUG_L1
     	printTagLog(TAG, "Request:");
+    	pack_show_hum(key, index, request.data, !send);
+#endif
+#ifdef GPROTOCOL_BEDUG_L2
     	pack_show(&request);
 #endif
 	}
@@ -218,8 +277,11 @@ public:
 
 		set_from_serialized(response->key, response->data, response->index);
 
-#ifdef DEBUG
+#ifdef GPROTOCOL_BEDUG_L1
     	printTagLog(TAG, "Response:");
+    	pack_show_hum(response->key, response->index, response->data, is_master_last_get);
+#endif
+#ifdef GPROTOCOL_BEDUG_L2
     	pack_show(response);
 #endif
 
@@ -227,11 +289,6 @@ public:
 	}
 
 };
-
-
-#ifdef DEBUG
-//std::unordered_map<uint32_t, std::string> gprotocol::debug_table;
-#endif
 
 
 #endif
