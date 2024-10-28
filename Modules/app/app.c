@@ -37,14 +37,19 @@ FSM_GC_CREATE_EVENT(app_error_e,    2)
 FSM_GC_CREATE_TABLE(
     app_fsm_table,
     { &app_init_s,   &app_success_e, &app_idle_s,  NULL},
+
     { &app_idle_s,   &app_start_e,   &app_start_s, NULL},
     { &app_idle_s,   &app_error_e,   &app_error_s, NULL},
+
     { &app_start_s,  &app_success_e, &app_count_s, NULL},
     { &app_start_s,  &app_error_e,   &app_error_s, NULL},
+
     { &app_count_s,  &app_stop_e,    &app_stop_s,  NULL},
     { &app_count_s,  &app_error_e,   &app_error_s, NULL},
+
     { &app_stop_s,   &app_success_e, &app_idle_s,  NULL},
     { &app_stop_s,   &app_error_e,   &app_error_s, NULL},
+
     { &app_error_s,  &app_success_e, &app_idle_s,  NULL}
 )
 
@@ -192,6 +197,7 @@ void _app_stop_s()
 
 void _app_error_s()
 {
+	// app_info.start = 0;
 	pump_stop();
 	reset_status(WORKING);
 

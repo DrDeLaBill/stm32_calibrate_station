@@ -394,6 +394,16 @@ void _pump_error_s()
 {
 	_pump_disable();
 
+	pump.last_ml = _pump_summary_ml();
+
+	pump.need_start = false;
+	pump.need_stop = false;
+	pump.target_ml = 0;
+	pump.measure_ml_add = 0;
+	pump.measure_ml_base = 0;
+	pump.measure_ticks_add = 0;
+	pump.measure_ticks_base = 0;
+
 	if (!is_error(PUMP_ERROR)) {
 		fsm_gc_push_event(&pump_fsm, &pump_success_e);
 	}
